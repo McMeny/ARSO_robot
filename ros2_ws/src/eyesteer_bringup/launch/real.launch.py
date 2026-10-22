@@ -8,6 +8,8 @@ ros2 launch eyesteer_bringup real.launch.py robot:=walker eeg:=lsl|synthetic|rep
 """
 import os
 
+import sys
+
 import xacro
 import yaml
 from ament_index_python.packages import get_package_share_directory
@@ -36,15 +38,10 @@ def setup(context):
     acts = [Node(package="robot_state_publisher", executable="robot_state_publisher", parameters=[st, {"robot_description": urdf}])]
     if hw["base"]["type"] == "custom_arduino_diffdrive":
         ctrl = os.path.join(root, "ros2_ws", "src", "eyesteer_bringup", "config", "generated", f"{robot}_controllers.yaml")
-        acts.append(Node(package="eyesteer_behavior", executable="mcu_bridge", output="screen", additional_env=env,
-                         parameters=[{"device": hw["mcu"]["device"], "baud": hw["mcu"]["baud"], "ros_link": ros_link,
-                                      "walker": robot == "walker"}]))
-        acts.append(TimerAction(period=4.0, actions=[
-            Node(package="controller_manager", executable="ros2_control_node", output="screen",
-                 parameters=[{"robot_description": urdf}, ctrl],
-                 remappings=[("/diff_cont/cmd_vel_unstamped", "/cmd_vel"), ("/diff_cont/odom", "/odom")]),
-            Node(package="controller_manager", executable="spawner", arguments=["joint_broad"]),
-            Node(package="controller_manager", executable="spawner", arguments=["diff_cont"])]))
+        sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+        from hw_interface import hw_interface_actions
+        acts += hw_interface_actions(urdf, ctrl, hw["mcu"]["device"], hw["mcu"]["baud"], ros_link, robot == "walker",
+                                     False, env, 2.0)
     lid = hw["lidar"]
     acts += [
         Node(package="sllidar_ros2", executable="sllidar_node", name="sllidar_node", output="screen",

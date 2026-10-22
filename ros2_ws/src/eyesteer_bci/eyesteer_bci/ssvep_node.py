@@ -79,7 +79,7 @@ class SsvepNode(Node):
     def on_markers(self, m: MarkerArray):
         mk = [Marker(id=x.id, label=x.label, slot=x.slot, x=x.position.x, y=x.position.y, z=x.position.z,
                      facing=x.facing, cancel=x.cancel, frequency=x.frequency) for x in m.markers]
-        if [(a.id, round(a.frequency, 3)) for a in mk] != [(a.id, round(a.frequency, 3)) for a in self.markers]:
+        if [(a.id, a.label, round(a.frequency, 3)) for a in mk] != [(a.id, a.label, round(a.frequency, 3)) for a in self.markers]:
             self.markers = mk
             self._build_pipeline()
             self.get_logger().info(f"marker set updated: {[(a.label, round(a.frequency, 2)) for a in mk]}")

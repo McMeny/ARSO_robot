@@ -152,6 +152,14 @@ class McuEmulator:
         self.grip = True
         self.rx_log: list = []
         self.alive = True        # set False to emulate a crashed / unplugged MCU
+        self._next_pid = None
+        # motor + gearbox inertia between the PWM output and the (physics) wheel: a first-order lag.
+        # Without it the PID's 30 Hz PWM steps hit MuJoCo's near-instant velocity actuator as torque
+        # pulses and the wheels skid (odometry error in turns).
+        self.motor_tau = 0.08
+        self._w_target = [0.0, 0.0]
+        self._w_out = [0.0, 0.0]
+        self._last_service = None
 
     # ------------------------------------------------------------------ pty
     def open(self) -> str:
@@ -192,7 +200,10 @@ class McuEmulator:
             pl, pr = self.core.pwm()
             wl = pl / self.c["MAX_PWM"] * self.w_full
             wr = pr / self.c["MAX_PWM"] * self.w_full
-            self.backend.set_wheels(wl, wr)
+            if isinstance(self.backend, MotorModel):
+                self.backend.set_wheels(wl, wr)          # the model has its own lag
+            else:
+                self._w_target = [wl, wr]
             return pl, pr
 
     def handle_bytes(self, data: bytes) -> bytes:
@@ -204,34 +215,52 @@ class McuEmulator:
                     out += r
         return out
 
+    def service(self, wait: float = 0.0):
+        """One non-blocking step: answer pending serial bytes, run the PID tick when due.
+
+        Called from serve_forever() (own thread, stand-alone) or directly from the MuJoCo physics loop
+        (HIL), which avoids a second Python thread competing for the GIL (that delayed replies past
+        diffdrive_arduino's read timeout)."""
+        now = self.time_fn()
+        if self._next_pid is None:
+            self._next_pid = now
+        if not isinstance(self.backend, MotorModel):
+            dt = 0.0 if self._last_service is None else max(0.0, now - self._last_service)
+            k = min(1.0, dt / self.motor_tau)
+            self._w_out = [o + (t - o) * k for o, t in zip(self._w_out, self._w_target)]
+            if self.alive:
+                self.backend.set_wheels(*self._w_out)
+        self._last_service = now
+        if now >= self._next_pid:
+            if self.alive:
+                self.pid_tick()
+            self._next_pid += 1.0 / self.rate
+            if now - self._next_pid > 1.0:      # clock jumped (sim reset): resync
+                self._next_pid = now
+        r, _, _ = select.select([self.master], [], [], wait)
+        if r:
+            try:
+                data = os.read(self.master, 256)
+            except OSError:
+                return
+            if not self.alive:
+                return   # crashed MCU: swallow bytes, never answer
+            self.rx_log.append(data)
+            self.rx_log = self.rx_log[-200:]
+            resp = self.handle_bytes(data)
+            if resp:
+                os.write(self.master, resp)
+
     def serve_forever(self, model_dt: float = 0.002):
-        """Serial I/O + PID timer (model backend also steps its motor here)."""
+        """Stand-alone loop: serial I/O + PID timer (the model backend also steps its motor here)."""
         self.running = True
-        next_pid = self.time_fn()
         last = self.time_fn()
-        buf = b""
         while self.running:
             now = self.time_fn()
             if isinstance(self.backend, MotorModel):
                 self.backend.step(now - last)
             last = now
-            if now >= next_pid:
-                if self.alive:
-                    self.pid_tick()
-                next_pid += 1.0 / self.rate
-            r, _, _ = select.select([self.master], [], [], 0.002)
-            if r:
-                try:
-                    data = os.read(self.master, 256)
-                except OSError:
-                    continue
-                if not self.alive:
-                    continue   # crashed MCU: swallow bytes, never answer
-                self.rx_log.append(data)
-                self.rx_log = self.rx_log[-200:]
-                resp = self.handle_bytes(data)
-                if resp:
-                    os.write(self.master, resp)
+            self.service(wait=0.002)
 
     def start(self):
         if self.master is None:

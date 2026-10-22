@@ -40,6 +40,7 @@ class ScenarioPlayer(Node):
         name = self.declare_parameter("scenario", "field_basic").value
         self.out_dir = Path(self.declare_parameter("out", str(ROOT / "outputs/metrics")).value)
         self.wait_unlock = self.declare_parameter("wait_for_unlock", True).value
+        self.prefix = self.declare_parameter("prefix", "ros").value     # ros (mujoco backend) | hil
         self.scn = config.scenario(name)
         ros = self.scn.get("ros", {})
         self.k = float(ros.get("time_scale", 1.0))
@@ -65,6 +66,7 @@ class ScenarioPlayer(Node):
         self.people = []
         self.prev_goal = None
         self.goal_sent_t = {}
+        self.latencies, self.lat_done = [], set()
         self.pub_gaze = self.create_publisher(Int32, "/bci/gaze", 10)
         self.pub_eng = self.create_publisher(Float32, "/bci/engagement", 10)
         self.pub_teleop = self.create_publisher(Twist, "/cmd_vel_teleop", 10)
@@ -76,6 +78,7 @@ class ScenarioPlayer(Node):
         self.pub_obst = self.create_publisher(Point, "/sim/spawn_obstacle", 10)
         self.pub_tele = self.create_publisher(Pose2D, "/sim/teleport", 10)
         self.pub_fault = self.create_publisher(String, "/sim/eeg_fault", 10)
+        self.pub_people = self.create_publisher(String, "/sim/people_cmd", 10)
         self.create_subscription(RobotStatus, "/robot/status", self.on_status, 10)
         self.create_subscription(Selection, "/bci/selection", self.on_sel, 10)
         self.create_subscription(String, "/mux/source", self.on_mux, 10)
@@ -105,7 +108,9 @@ class ScenarioPlayer(Node):
         if not self.states or self.states[-1] != key:
             self.states.append(key)
         if m.state == "ARRIVED" and self.prev_goal != ("ARRIVED", m.goal_id):
-            self.arrivals.append({"t": round(self.t, 2), "id": m.goal_id, "label": m.goal_label})
+            sent = self.goal_sent_t.pop(m.goal_id, None)
+            self.arrivals.append({"t": round(self.t, 2), "id": m.goal_id, "label": m.goal_label,
+                                  "time_to_goal_s": round(self.t - sent, 2) if sent is not None else None})
         if m.state == "ENGAGED" and m.goal_id not in self.goal_sent_t:
             self.goal_sent_t[m.goal_id] = self.t
         self.prev_goal = (m.state, m.goal_id) if m.state == "ARRIVED" else None
@@ -114,6 +119,10 @@ class ScenarioPlayer(Node):
         if self.t0 is None:
             return
         gt = self.recent_gaze(self.t)
+        onset = [e["t"] for e in self.events if e.get("gaze") == m.marker_id and e["t"] <= self.t]
+        if onset and m.marker_id not in self.lat_done:
+            self.lat_done.add(m.marker_id)
+            self.latencies.append(round(self.t - onset[-1], 3))
         self.sel.append({"t": round(self.t, 2), "id": m.marker_id, "label": m.label, "correct": m.marker_id == gt})
 
     def on_mux(self, m: String):
@@ -142,6 +151,10 @@ class ScenarioPlayer(Node):
         c = self.fp.clearance(x, y, yaw, lambda px, py: static_sdf(self.world, px, py), self.people)
         if c < 0 and self.was_clear:
             self.collisions += 1
+            cs = self.fp.clearance(x, y, yaw, lambda px, py: static_sdf(self.world, px, py))
+            near = min(self.people, key=lambda p: math.hypot(p[0] - x, p[1] - y)) if self.people else None
+            self.get_logger().error(f"COLLISION t={self.t:.1f} pose=({x:.2f},{y:.2f},{yaw:.2f}) static_clear={cs:.3f} "
+                                    f"nearest_person={near} state={self.status.display if self.status else '?'}")
         self.was_clear = c >= 0
         self.min_clear = min(self.min_clear, c)
 
@@ -176,6 +189,9 @@ class ScenarioPlayer(Node):
             if self.unlocked or not self.wait_unlock:
                 self.t0 = self.now()
                 self.get_logger().info("motion unlocked: scenario clock started")
+                cmd = json.dumps({"disable": self.scn.get("disable_people", []), "delay": self.scn.get("people_delay", {})})
+                for _ in range(3):   # same people schedule as Runtime C, relative to the scenario clock
+                    self.pub_people.publish(String(data=cmd))
             return
         t = self.t
         while self.ev_i < len(self.events) and self.events[self.ev_i]["t"] <= t:
@@ -248,20 +264,21 @@ class ScenarioPlayer(Node):
         total = sum(self.mux_time.values()) or 1.0
         false = [s for s in self.sel if not s["correct"]]
         st = self.status
-        res = {"scenario": self.scn["name"], "runtime": "ros_sim", "robot": self.robot, "world": self.scn["world"],
+        res = {"scenario": self.scn["name"], "runtime": "ros_hil" if self.prefix == "hil" else "ros_sim", "robot": self.robot, "world": self.scn["world"],
                "duration_s": round(self.t, 1), "eeg": "SIMULATED", "selections": self.sel,
                "correct_selections": len(self.sel) - len(false), "false_selections": len(false),
                "false_per_min_lookaround": round(len(false) / (self.lookaround_time / 60), 3) if self.lookaround_time else None,
-               "arrivals": self.arrivals, "path_length_m": round(self.path_len, 2),
+               "arrivals": self.arrivals, "detection_latency_s": self.latencies, "path_length_m": round(self.path_len, 2),
                "min_clearance_m": round(self.min_clear, 3), "collisions": self.collisions,
                "collision_monitor_activations": self.cm_act,
                "mux_share": {k: round(v / total, 3) for k, v in sorted(self.mux_time.items())},
                "states_seen": self.states, "final_state": st.display.split(" ")[0] if st else "?"}
         scn = dict(self.scn)
+        scn["expect"] = {k: v for k, v in scn.get("expect", {}).items() if k not in self.scn.get("ros", {}).get("skip_expect", [])}
         res["expectation_failures"] = check(scn, res)
         res["passed"] = not res["expectation_failures"]
         self.out_dir.mkdir(parents=True, exist_ok=True)
-        (self.out_dir / f"ros_{self.scn['name']}.json").write_text(json.dumps(res, indent=2))
+        (self.out_dir / f"{self.prefix}_{self.scn['name']}.json").write_text(json.dumps(res, indent=2))
         self.get_logger().info(f"[ROS {self.scn.get('id', '')} {self.scn['name']}] {'PASS' if res['passed'] else 'FAIL'} "
                                f"selections={[s['label'] for s in self.sel]} visited={[a['label'] for a in self.arrivals]} "
                                f"states={self.states} collisions={self.collisions} {res['expectation_failures']}")

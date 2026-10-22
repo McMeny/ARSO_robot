@@ -27,26 +27,27 @@
   ],
   "arrivals": [
     {
-      "t": 35.19,
+      "t": 42.4,
       "id": 1,
       "label": "Beans",
-      "time_to_goal_s": 29.34
+      "time_to_goal_s": 36.55
     },
     {
-      "t": 91.77,
+      "t": 82.65,
       "id": 5,
       "label": "Checkout",
-      "time_to_goal_s": 44.34
+      "time_to_goal_s": 35.22
     }
   ],
-  "path_length_m": 18.48,
-  "min_clearance_m": 0.014,
+  "path_length_m": 18.53,
+  "min_clearance_m": 0.046,
   "collisions": 0,
   "contact_frames": 0,
   "collision_monitor_activations": 7,
   "mux_share": {
     "LOCK:DEADMAN": 0.021,
-    "NAVIGATION": 0.979
+    "NAVIGATION": 0.658,
+    "NONE": 0.321
   },
   "states_seen": [
     "ASSIST",
@@ -58,37 +59,9 @@
     "ASSIST"
   ],
   "final_state": "ASSIST",
-  "odom_drift_m": 0.3485,
-  "odom_drift_per_m": 0.01886,
+  "odom_drift_m": 0.3553,
+  "odom_drift_per_m": 0.01917,
   "nav_failures": 0,
-  "video": "C:\\Users\\minua\\Downloads\\Robotics\\ARSO_robot\\outputs\\videos\\S5_supermarket_walker.mp4",
-  "stills": [
-    {
-      "file": "outputs\\stills\\S5_supermarket_walker_assist.png",
-      "t": 2.0,
-      "caption": "ASSIST at the entrance; markers are virtual MR overlays (not physical objects)."
-    },
-    {
-      "file": "outputs\\stills\\S5_supermarket_walker_shopper.png",
-      "t": 13.5,
-      "caption": "Shopper crossing: collision monitor active (user-inclusive footprint)."
-    },
-    {
-      "file": "outputs\\stills\\S5_supermarket_walker_pullback.png",
-      "t": 21.0,
-      "caption": "User pulls back: navigation scaled down, the user wins."
-    },
-    {
-      "file": "outputs\\stills\\S5_supermarket_walker_deadman.png",
-      "t": 25.5,
-      "caption": "Grip released: dead-man lock, walker stopped."
-    },
-    {
-      "file": "outputs\\stills\\S5_supermarket_walker_arrived_pov.png",
-      "t": 40.0,
-      "caption": "User's view at the Beans: MR marker overlay, walker in ASSIST."
-    }
-  ],
   "expectation_failures": [],
   "passed": true
 }

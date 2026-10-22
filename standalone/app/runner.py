@@ -360,8 +360,8 @@ class ScenarioRunner:
         scale, self.cm_state = self.cm(getattr(self, "_cm_pts", np.zeros((0, 2))))
         if out.v > 0:
             out = Twist(out.v * scale, out.w if scale > 0 else 0.0)   # STOP zeroes everything (as Nav2)
-        # in-place rotation guard (sweeps the whole footprint incl. the walker's user)
-        if self.fp.type == "polygon" and abs(out.v) < 0.05 and abs(out.w) > 0.05 and self.rot_guard.blocked(x, y, yaw):
+        # sweep guard: turning swings the whole footprint (incl. the walker's user) sideways
+        if self.fp.type == "polygon" and self.rot_guard.sweep_blocked(x, y, yaw, out.v, out.w):
             out = Twist(out.v, 0.0)
             self.cm_state = "STOP"
         # Nav2-style recovery: stopped by the collision monitor for > 4 s while navigating -> back up, replan

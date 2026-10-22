@@ -165,8 +165,10 @@ def test_velocity_chain_topics():
         assert t in safety
     bridge = (SRC / "eyesteer_mujoco/eyesteer_mujoco/mujoco_bridge.py").read_text(encoding="utf-8")
     assert '"/cmd_vel", self.on_cmd' in bridge
+    hw = (SRC / "eyesteer_bringup/launch/hw_interface.py").read_text(encoding="utf-8")
+    assert '("/diff_cont/cmd_vel_unstamped", "/cmd_vel")' in hw and '("/diff_cont/odom", "/odom")' in hw
     for lf in ("sim.launch.py", "real.launch.py"):
-        assert '("/diff_cont/cmd_vel_unstamped", "/cmd_vel")' in (SRC / f"eyesteer_bringup/launch/{lf}").read_text(encoding="utf-8")
+        assert "hw_interface_actions(" in (SRC / f"eyesteer_bringup/launch/{lf}").read_text(encoding="utf-8")
 
 
 # 8. ros2_control <-> MCU

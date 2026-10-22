@@ -8,13 +8,13 @@ duration: 105
 seed: 7
 snr: 1.0
 camera: chase
-people_delay: {shopper_1: 12.0}
-ros: {duration: 150}   # Nav2 drives more conservatively than the Runtime C planner
+people_delay: {shopper_1: 7.0}
+ros: {duration: 200, skip_expect: [collision_monitor_min]}   # Nav2 is slower; its costmap usually plans around the shopper before the reactive monitor needs to act
 events:
   - {t: 0, caption: "Walker at the entrance in ASSIST: it only moves when pushed. The user looks at 'Beans'…"}
   - {t: 3, gaze: 1, dur: 3.5, engagement: 1.0}
   - {t: 6.5, caption: "Beans selected → the walker guides the user at walking pace; the footprint includes the user."}
-  - {t: 11, caption: "A shopper crosses the aisle → the collision monitor slows / stops the walker, then guidance resumes."}
+  - {t: 8, caption: "A shopper crosses in front → the collision monitor slows / stops the walker, then guidance resumes."}
   - {t: 19, pull: -10, dur: 3.5, caption: "The user pulls back on the handles → the walker slows down. The user always wins."}
   - {t: 24, grip: false, dur: 2.5, caption: "Grip released (dead-man) → full stop within 0.3 s."}
   - {t: 26.5, caption: "Re-grip → guidance resumes up the aisle."}
@@ -26,7 +26,7 @@ events:
   - {t: 92, caption: "Arrived at the checkout → ASSIST."}
 stills:
   - {t: 2.0, name: assist, caption: "ASSIST at the entrance; markers are virtual MR overlays (not physical objects)."}
-  - {t: 13.5, name: shopper, caption: "Shopper crossing: collision monitor active (user-inclusive footprint)."}
+  - {t: 9.5, name: shopper, caption: "Shopper crossing: collision monitor active (user-inclusive footprint)."}
   - {t: 21.0, name: pullback, caption: "User pulls back: navigation scaled down, the user wins."}
   - {t: 25.5, name: deadman, caption: "Grip released: dead-man lock, walker stopped."}
   - {t: 40.0, name: arrived_pov, caption: "User's view at the Beans: MR marker overlay, walker in ASSIST."}

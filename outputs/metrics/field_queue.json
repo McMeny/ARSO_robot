@@ -39,19 +39,20 @@
       "time_to_goal_s": 52.43
     },
     {
-      "t": 75.45,
+      "t": 75.92,
       "id": 4,
       "label": "D",
-      "time_to_goal_s": 15.13
+      "time_to_goal_s": 15.61
     }
   ],
-  "path_length_m": 22.54,
+  "path_length_m": 22.61,
   "min_clearance_m": 0.028,
   "collisions": 0,
   "contact_frames": 0,
   "collision_monitor_activations": 26,
   "mux_share": {
-    "NAVIGATION": 1.0
+    "NAVIGATION": 0.97,
+    "NONE": 0.03
   },
   "states_seen": [
     "WANDER",
@@ -62,8 +63,8 @@
     "WANDER"
   ],
   "final_state": "WANDER",
-  "odom_drift_m": 4.3283,
-  "odom_drift_per_m": 0.19202,
+  "odom_drift_m": 3.7572,
+  "odom_drift_per_m": 0.16621,
   "nav_failures": 0,
   "video": "C:\\Users\\minua\\Downloads\\Robotics\\ARSO_robot\\outputs\\videos\\S2_field_queue.mp4",
   "stills": [

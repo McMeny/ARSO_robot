@@ -81,3 +81,14 @@ One line per decision: **decision**: reason.
 - **systemd units installed disabled**; started explicitly for a demo.
 - **Self-signed cert with SANs for hostname, .local, localhost and all local IPs**; rosbridge wss uses the same cert.
 - **`jetson_setup.sh --dry-run`** verified on Ubuntu 22.04 (WSL); all shell scripts pass shellcheck.
+
+## End-to-end integration (M7.5): what the HIL path exposed (and the fixes)
+- **ros2_control is started by an event, not a timer** (`launch/hw_interface.py`): it launches only after `mcu_bridge` logs that the MCU link is up. A 4 s timer raced the bridge's start (slow Python start-up) and diffdrive_arduino died with `LibSerial::OpenFailed`. The same race would hit the real robot (Arduino reset wait), so `real.launch.py` uses the same gate.
+- **The HIL MCU emulator is serviced from the physics loop, not a thread**: a second Python thread starved by the GIL answered diffdrive_arduino's `e` late; each miss blocks the ros2_control loop for the full 1 s read timeout, odometry stalls and AMCL loses the robot.
+- **First-order motor lag (τ = 80 ms) between the emulated PWM and the MuJoCo wheel**: without motor/gearbox inertia, the PID's 30 Hz PWM steps hit MuJoCo's near-instant velocity actuator as torque pulses; the wheels skid and odometry heading drifts (robot went LOST). With the lag, wheel-speed ripple drops 5–10× and S1 passes in HIL.
+- **Walker approach distance 1.0 m (was 0.8)**: at the goal the walker faces the shelf; turning around sweeps a 0.73 m radius about the rear axle, so the axle needs ≥ 0.83 m (sweep + 0.1 m guard). At 0.8 m the (correct) rotation guard blocked the turn and Nav2 aborted for lack of progress.
+- **Walker progress-checker allowance 45 s** (field 20 s): the collision monitor's slowdown also scales rotation, so a 180° turn next to a shelf takes ~20 s; Nav2's progress checker only counts translation.
+- **Sweep guard (generalized rotation guard)**: any turning motion is checked by predicting the footprint 0.3 s and 0.6 s ahead against remembered LiDAR points; a shopper behind the walker was clipped by the user zone while the walker arced into an aisle.
+- **Supermarket shopper_1 crosses once (one-way path) in front of the walker, then waits by the wall**: the old ping-pong path made the shopper loiter head-on in the only aisle exit, which tested the shopper model, not the robot.
+- **`scenario_player` applies the scenario's people schedule in ROS** (`/sim/people_cmd`), so ROS runs see the same crossings as Runtime C; per-scenario `ros:` overrides (duration, `skip_expect`) record where Nav2 legitimately differs (its costmap usually plans around the shopper before the reactive collision monitor acts).
+- **Long ROS batches run inside one long-lived `wsl.exe`** (processes started from a WSL session die when it exits; PowerShell background jobs are capped at 600 s).

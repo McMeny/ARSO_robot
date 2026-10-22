@@ -40,10 +40,11 @@ class Person:
         self.idx = 1
         self.dir = 1
         self.enabled = spec.get("enabled", True)
+        self.loop = spec.get("loop", True)     # False: walk the path once, then stay at the end
         self.blocked = False
 
     def step(self, dt, t, robot_clear_fn):
-        if not self.enabled or t < self.delay or len(self.path) < 2:
+        if not self.enabled or t < self.delay or len(self.path) < 2 or getattr(self, "finished", False):
             return
         target = self.path[self.idx]
         d = target - self.pos
@@ -64,6 +65,9 @@ class Person:
         self.blocked_for = 0.0
         self.pos = nxt
         if dist <= step:
+            if not self.loop and self.idx == len(self.path) - 1:
+                self.finished = True
+                return
             if self.idx + self.dir >= len(self.path) or self.idx + self.dir < 0:
                 self.dir *= -1   # ping-pong along the path
             self.idx += self.dir

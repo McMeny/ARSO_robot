@@ -10,6 +10,8 @@ backend:=mujoco_hil  mujoco_bridge hosts the MCU emulator (firmware core on a pt
 """
 import os
 
+import sys
+
 import xacro
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
@@ -46,16 +48,9 @@ def setup(context):
         ctrl = os.path.join(bring, "config", "generated", f"{robot}_controllers.yaml")
         if not os.path.exists(ctrl):
             ctrl = os.path.join(root, "ros2_ws", "src", "eyesteer_bringup", "config", "generated", f"{robot}_controllers.yaml")
-        acts.append(TimerAction(period=2.0, actions=[
-            Node(package="eyesteer_behavior", executable="mcu_bridge", output="screen", additional_env=env,
-                 parameters=[st, {"device": "/tmp/eyesteer_mcu", "ros_link": ros_link, "walker": robot == "walker",
-                                  "reset_wait": 0.2}])]))
-        acts.append(TimerAction(period=4.0, actions=[
-            Node(package="controller_manager", executable="ros2_control_node", output="screen",
-                 parameters=[st, {"robot_description": urdf}, ctrl],
-                 remappings=[("/diff_cont/cmd_vel_unstamped", "/cmd_vel"), ("/diff_cont/odom", "/odom")]),
-            Node(package="controller_manager", executable="spawner", arguments=["joint_broad"], parameters=[st]),
-            Node(package="controller_manager", executable="spawner", arguments=["diff_cont"], parameters=[st])]))
+        sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+        from hw_interface import hw_interface_actions
+        acts += hw_interface_actions(urdf, ctrl, "/tmp/eyesteer_mcu", 57600, ros_link, robot == "walker", True, env, 0.2)
     stack = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(bring, "launch", "stack.launch.py")),
         launch_arguments={"robot": robot, "world": a["world"], "eeg": a["eeg"], "use_sim_time": "true",
@@ -68,7 +63,7 @@ def setup(context):
                          parameters=[st]))
     if a["scenario"]:
         acts.append(Node(package="eyesteer_behavior", executable="scenario_player", output="screen", additional_env=env,
-                         parameters=[st, {"scenario": a["scenario"]}]))
+                         parameters=[st, {"scenario": a["scenario"], "prefix": "hil" if hil else "ros"}]))
     return acts
 
 

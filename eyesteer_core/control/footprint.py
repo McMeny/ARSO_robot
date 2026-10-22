@@ -132,6 +132,24 @@ class RotationGuard:
         local = np.stack([c * dx + s * dy, -s * dx + c * dy], 1)
         return int(point_in_poly(local, self.poly).sum()) >= 2
 
+    def sweep_blocked(self, x: float, y: float, yaw: float, v: float, w: float,
+                      horizons=(0.3, 0.6)) -> bool:
+        """Any turning motion sweeps the walker's rear (the user zone) sideways, where neither the
+        front-only collision-monitor zones nor the occluded rear LiDAR sector look. Predict the footprint a
+        short time ahead under (v, w) and check it against the remembered LiDAR points."""
+        if abs(w) < 0.05:
+            return False
+        for dt in horizons:
+            if abs(w) > 1e-6:
+                th = yaw + w * dt
+                px = x + v / w * (math.sin(th) - math.sin(yaw))
+                py = y - v / w * (math.cos(th) - math.cos(yaw))
+            else:
+                th, px, py = yaw, x + v * dt * math.cos(yaw), y + v * dt * math.sin(yaw)
+            if self.blocked(px, py, th):
+                return True
+        return False
+
 
 def monitor_polygon(fp: dict, margin: float, side_margin: float | None = None) -> list:
     """Collision-monitor zone in the base frame: the FRONT half of the footprint, extended `margin`

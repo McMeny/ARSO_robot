@@ -22,8 +22,8 @@ obstacles:
   - {name: checkout_1, type: box, x: 2.8, y: -4.4, sx: 1.6, sy: 0.5, h: 0.9, yaw: 0.0, rgba: [0.4, 0.4, 0.45, 1]}
   - {name: checkout_2, type: box, x: 6.0, y: -3.6, sx: 0.5, sy: 1.6, h: 0.9, yaw: 0.0, rgba: [0.4, 0.4, 0.45, 1]}
 people:
-  # shopper_1 crosses the main cross-aisle (y ~ -3.4) that the walker uses towards the aisles
-  - {name: shopper_1, radius: 0.25, speed: 0.45, path: [[-2.6, -4.6], [-2.6, -2.2]], start_delay: 0.0}
+  # shopper_1 crosses the cross-aisle once (north -> south) in front of the walker, then waits by the south wall
+  - {name: shopper_1, radius: 0.25, speed: 0.45, path: [[-4.9, -2.85], [-4.9, -4.7]], loop: false, start_delay: 0.0}
   - {name: shopper_2, radius: 0.25, speed: 0.35, path: [[5.6, 3.6], [5.6, -1.8]]}
 start_pose: [-6.0, -3.9, 0.0]       # entrance
 default_markers: supermarket_default

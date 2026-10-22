@@ -26,13 +26,14 @@
       "time_to_goal_s": 22.75
     }
   ],
-  "path_length_m": 16.55,
-  "min_clearance_m": 0.141,
+  "path_length_m": 16.56,
+  "min_clearance_m": 0.145,
   "collisions": 0,
   "contact_frames": 0,
-  "collision_monitor_activations": 3,
+  "collision_monitor_activations": 1,
   "mux_share": {
-    "NAVIGATION": 1.0
+    "NAVIGATION": 0.975,
+    "NONE": 0.025
   },
   "states_seen": [
     "WANDER",
@@ -41,8 +42,8 @@
     "WANDER"
   ],
   "final_state": "WANDER",
-  "odom_drift_m": 2.1066,
-  "odom_drift_per_m": 0.12728,
+  "odom_drift_m": 2.2288,
+  "odom_drift_per_m": 0.13457,
   "nav_failures": 0,
   "video": "C:\\Users\\minua\\Downloads\\Robotics\\ARSO_robot\\outputs\\videos\\S1_field_basic.mp4",
   "stills": [

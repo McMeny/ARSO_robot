@@ -1,0 +1,66 @@
+{
+  "scenario": "supermarket_walker",
+  "runtime": "ros_sim",
+  "robot": "walker",
+  "world": "supermarket",
+  "duration_s": 150.0,
+  "eeg": "SIMULATED",
+  "selections": [
+    {
+      "t": 4.98,
+      "id": 1,
+      "label": "Beans",
+      "correct": true
+    },
+    {
+      "t": 7.14,
+      "id": 1,
+      "label": "Beans",
+      "correct": true
+    },
+    {
+      "t": 46.42,
+      "id": 5,
+      "label": "Checkout",
+      "correct": true
+    }
+  ],
+  "correct_selections": 3,
+  "false_selections": 0,
+  "false_per_min_lookaround": null,
+  "arrivals": [
+    {
+      "t": 40.01,
+      "id": 1,
+      "label": "Beans",
+      "time_to_goal_s": 34.91
+    }
+  ],
+  "detection_latency_s": [
+    1.98,
+    2.42
+  ],
+  "path_length_m": 17.7,
+  "min_clearance_m": 0.144,
+  "collisions": 0,
+  "collision_monitor_activations": 0,
+  "mux_share": {
+    "LOCK:DEADMAN": 0.014,
+    "NAVIGATION": 0.911,
+    "NONE": 0.075
+  },
+  "states_seen": [
+    "ASSIST",
+    "ENGAGED",
+    "ARRIVED",
+    "ASSIST",
+    "ENGAGED"
+  ],
+  "final_state": "ENGAGED",
+  "expectation_failures": [
+    "visited [1] != [1, 5]",
+    "final state ENGAGED != ASSIST",
+    "collision monitor never activated"
+  ],
+  "passed": false
+}

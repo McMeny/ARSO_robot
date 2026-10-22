@@ -10,7 +10,7 @@
   "false_per_min_lookaround": 0.0,
   "detection_latency_s": [],
   "arrivals": [],
-  "path_length_m": 22.81,
+  "path_length_m": 22.95,
   "min_clearance_m": 0.151,
   "collisions": 0,
   "contact_frames": 0,
@@ -22,8 +22,8 @@
     "WANDER"
   ],
   "final_state": "WANDER",
-  "odom_drift_m": 0.5619,
-  "odom_drift_per_m": 0.02463,
+  "odom_drift_m": 1.1583,
+  "odom_drift_per_m": 0.05046,
   "nav_failures": 0,
   "video": "C:\\Users\\minua\\Downloads\\Robotics\\ARSO_robot\\outputs\\videos\\S3_field_no_control.mp4",
   "stills": [

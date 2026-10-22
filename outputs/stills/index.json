@@ -1,79 +1,79 @@
 {
   "field_basic": [
     {
-      "file": "outputs\\stills\\S1_field_basic_attending.png",
+      "file": "outputs/stills/S1_field_basic_attending.png",
       "t": 10.4,
       "caption": "User attends marker C; CCA \u03c1 for C rises above threshold, dwell filling."
     },
     {
-      "file": "outputs\\stills\\S1_field_basic_engaged.png",
+      "file": "outputs/stills/S1_field_basic_engaged.png",
       "t": 20.0,
       "caption": "ENGAGED \u2192 C: planned path around obstacles, LiDAR hits in blue."
     }
   ],
-  "field_overrides": [
-    {
-      "file": "outputs\\stills\\S4_field_overrides_teleop.png",
-      "t": 16.0,
-      "caption": "Teleop override: mux source TELEOP while the goal B stays active."
-    },
-    {
-      "file": "outputs\\stills\\S4_field_overrides_estop.png",
-      "t": 43.0,
-      "caption": "E-stop latched: lock active, zero velocity."
-    }
-  ],
   "field_queue": [
     {
-      "file": "outputs\\stills\\S2_field_queue_queued.png",
+      "file": "outputs/stills/S2_field_queue_queued.png",
       "t": 19.5,
       "caption": "ENGAGED \u2192 A with D queued (numbered badge 1 on D)."
     },
     {
-      "file": "outputs\\stills\\S2_field_queue_glance.png",
+      "file": "outputs/stills/S2_field_queue_glance.png",
       "t": 25.0,
       "caption": "Short glance at E: \u03c1(E) spikes but the dwell never completes \u2192 no selection."
     }
   ],
-  "supermarket_queue": [
-    {
-      "file": "outputs\\stills\\S6_supermarket_queue_queued.png",
-      "t": 19.0,
-      "caption": "ENGAGED \u2192 Bread with Milk queued (badge 1)."
-    }
-  ],
   "field_no_control": [
     {
-      "file": "outputs\\stills\\S3_field_no_control_lookaround.png",
+      "file": "outputs/stills/S3_field_no_control_lookaround.png",
       "t": 40.0,
       "caption": "No-control: \u03c1 bars flicker during glances but stay below threshold or never dwell."
     }
   ],
+  "field_overrides": [
+    {
+      "file": "outputs/stills/S4_field_overrides_teleop.png",
+      "t": 16.0,
+      "caption": "Teleop override: mux source TELEOP while the goal B stays active."
+    },
+    {
+      "file": "outputs/stills/S4_field_overrides_estop.png",
+      "t": 43.0,
+      "caption": "E-stop latched: lock active, zero velocity."
+    }
+  ],
   "supermarket_walker": [
     {
-      "file": "outputs\\stills\\S5_supermarket_walker_assist.png",
+      "file": "outputs/stills/S5_supermarket_walker_assist.png",
       "t": 2.0,
       "caption": "ASSIST at the entrance; markers are virtual MR overlays (not physical objects)."
     },
     {
-      "file": "outputs\\stills\\S5_supermarket_walker_shopper.png",
+      "file": "outputs/stills/S5_supermarket_walker_shopper.png",
       "t": 13.5,
       "caption": "Shopper crossing: collision monitor active (user-inclusive footprint)."
     },
     {
-      "file": "outputs\\stills\\S5_supermarket_walker_pullback.png",
+      "file": "outputs/stills/S5_supermarket_walker_pullback.png",
       "t": 21.0,
       "caption": "User pulls back: navigation scaled down, the user wins."
     },
     {
-      "file": "outputs\\stills\\S5_supermarket_walker_deadman.png",
+      "file": "outputs/stills/S5_supermarket_walker_deadman.png",
       "t": 25.5,
       "caption": "Grip released: dead-man lock, walker stopped."
     },
     {
-      "file": "outputs\\stills\\S5_supermarket_walker_arrived_pov.png",
+      "file": "outputs/stills/S5_supermarket_walker_arrived_pov.png",
       "t": 40.0,
       "caption": "User's view at the Beans: MR marker overlay, walker in ASSIST."
+    }
+  ],
+  "supermarket_queue": [
+    {
+      "file": "outputs/stills/S6_supermarket_queue_queued.png",
+      "t": 19.0,
+      "caption": "ENGAGED \u2192 Bread with Milk queued (badge 1)."
     }
   ]
 }

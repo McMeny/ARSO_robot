@@ -9,7 +9,8 @@ SCN=$1; BACKEND=${2:-mujoco}; TMO=${3:-400}
 read -r WORLD ROBOT < <(python3 -c "import yaml;d=yaml.safe_load(open('config/scenarios/$SCN.yaml'));print(d['world'],d['robot'])")
 CLEAN="eyesteer_|nav2_|rosbridge|twist_mux|ros2_control|controller_manager|robot_state_publisher|slam_toolbox|lifecycle_manager|amcl|map_server|rosapi"
 pkill -9 -f "ros2 launch eyesteer" 2>/dev/null; pkill -9 -f "$CLEAN" 2>/dev/null; sleep 1   # never two stacks at once
-OUT=outputs/metrics/ros_${SCN}.json
+PREFIX=ros; [[ "$BACKEND" == "mujoco_hil" ]] && PREFIX=hil
+OUT=outputs/metrics/${PREFIX}_${SCN}.json
 rm -f "$OUT"
 LOG=outputs/logs/ros_${SCN}_${BACKEND}.log
 mkdir -p outputs/logs
@@ -24,7 +25,7 @@ if [[ -f "$OUT" ]]; then
   python3 - "$OUT" <<'PY'
 import json,sys
 d=json.load(open(sys.argv[1]))
-print(f"[ROS {d['scenario']}] {'PASS' if d['passed'] else 'FAIL'} sel={[s['label'] for s in d['selections']]} visited={[a['label'] for a in d['arrivals']]} states={d['states_seen']} collisions={d['collisions']} minclear={d['min_clearance_m']} mux={d['mux_share']} {d['expectation_failures']}")
+print(f"[{d['runtime']} {d['scenario']}] {'PASS' if d['passed'] else 'FAIL'} sel={[s['label'] for s in d['selections']]} visited={[a['label'] for a in d['arrivals']]} states={d['states_seen']} collisions={d['collisions']} minclear={d['min_clearance_m']} mux={d['mux_share']} {d['expectation_failures']}")
 sys.exit(0 if d['passed'] else 1)
 PY
 else

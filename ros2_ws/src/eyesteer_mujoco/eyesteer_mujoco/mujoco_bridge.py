@@ -94,9 +94,7 @@ class MujocoBridge(Node):
             sys.path.insert(0, str(_root.ROOT / "firmware/emulator"))
             from mcu_emulator import McuEmulator
             self.emu = McuEmulator(self.robot, self.mcu_link, backend=self.sim, time_fn=lambda: self.sim.t)
-            path = self.emu.open()
-            self.emu_thread = threading.Thread(target=self._emu_loop, daemon=True)
-            self.emu_thread.start()
+            path = self.emu.open()     # serviced from the physics loop (no extra thread: GIL latency)
             self.get_logger().info(f"HIL: firmware core emulated on {path}")
         # sim inputs (scenario_player / viewer keys / tests)
         self.create_subscription(Float32MultiArray, "/sim/handle_force_cmd", self.on_force, 10)
@@ -105,6 +103,7 @@ class MujocoBridge(Node):
         self.create_subscription(Point, "/sim/spawn_obstacle", lambda m: self.sim.spawn_obstacle(m.x, m.y, m.z or 0.25), 10)
         self.create_subscription(Pose2D, "/sim/teleport", lambda m: self._teleport(m), 10)
         self.create_subscription(Bool, "/sim/kill_mcu", self.on_kill_mcu, 10)
+        self.create_subscription(String, "/sim/people_cmd", self.on_people_cmd, 10)
         self.lidar_off = False
         self.create_subscription(Bool, "/sim/lidar_off", lambda m: setattr(self, "lidar_off", m.data), 10)
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL, reliability=ReliabilityPolicy.RELIABLE)
@@ -152,6 +151,20 @@ class MujocoBridge(Node):
         else:
             self.emu.estop_pressed = m.data
 
+    def on_people_cmd(self, m: String):
+        """Scenario control of the moving people: {"disable": [names], "delay": {name: seconds from now}}."""
+        import json
+        cmd = json.loads(m.data)
+        with self.lock:
+            for p in self.sim.people:
+                if p.name in cmd.get("disable", []):
+                    p.enabled = False
+                    self.sim.d.mocap_pos[p.mocap_id][:2] = [99.0, 99.0]
+                if p.name in cmd.get("delay", {}):
+                    p.pos, p.idx, p.dir = p.path[0].copy(), 1, 1
+                    p.delay = self.sim.t + float(cmd["delay"][p.name])
+                    self.sim.d.mocap_pos[p.mocap_id][:2] = p.pos
+
     def on_kill_mcu(self, m: Bool):
         if self.backend != "mujoco":
             self.emu.alive = not m.data
@@ -190,7 +203,10 @@ class MujocoBridge(Node):
                     self.sim.set_wheels(0.0, 0.0)   # crashed MCU: H-bridge outputs float -> wheels stop
                 if self.backend != "mujoco":
                     self.emu.forces, self.emu.grip = self.forces, self.grip
+                    self.emu.service()
                 self.sim.step(dt)
+                if self.backend != "mujoco":
+                    self.emu.service()
                 t = self.sim.t
             self.pub_clock.publish(Clock(clock=stamp(t)))
             if self.resp_t0 is not None and self.resp_t0 > 0:

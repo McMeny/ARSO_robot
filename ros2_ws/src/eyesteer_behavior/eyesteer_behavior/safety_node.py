@@ -112,9 +112,9 @@ class SafetyNode(Node):
 
     def on_cm(self, m: Twist):
         out = m
-        if self.is_walker and abs(m.linear.x) < 0.05 and abs(m.angular.z) > 0.05:
+        if self.is_walker and abs(m.angular.z) > 0.05:
             p = self.pose()
-            if p is not None and self.guard.blocked(*p):
+            if p is not None and self.guard.sweep_blocked(*p, m.linear.x, m.angular.z):
                 out = Twist()
                 out.linear.x = m.linear.x
         self.last_cm, self.last_cm_t = out, self.now()

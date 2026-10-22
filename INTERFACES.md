@@ -38,6 +38,7 @@ reconnects every 2 s and re-subscribes; latched topics (`/markers`, `/xr/calibra
 | `/bci/calibration_cue` | `std_msgs/Int32` (marker id, −1 rest, −2 done) | → headset | events |
 | `/bci/selection` | `eyesteer_interfaces/Selection` | → headset | events |
 | `/amcl_pose`, `/sim/ground_truth` | `geometry_msgs/PoseWithCovarianceStamped`, `nav_msgs/Odometry` | → headset | ≤ 10 Hz |
+| `/sim/people` | `geometry_msgs/PoseArray` (x, y, z = radius; sim only) | → headset | 5 Hz |
 | `/eyesteer/latency` | `std_msgs/String` (JSON `{event, wall, dt_ms…}`) | → headset | events |
 | `/xr/timing` | `eyesteer_interfaces/XrTiming` | headset → | 2 Hz (also the headset heartbeat: 3 s silence = disconnected) |
 | `/xr/anchors` | `eyesteer_interfaces/MarkerArray` (frame `map` or `headset`) | headset → | on edit |

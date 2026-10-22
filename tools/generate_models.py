@@ -466,7 +466,7 @@ def nav_variant(r: dict, variant: str) -> dict:
     v = (0.4 if walker else 0.45) if variant == "sim" else (0.3 if walker else 0.3)
     infl = r["nav"]["inflation_radius"] + (0.1 if variant == "real" else 0.0)
     return {"VARIANT": variant, "NAV_V": str(v), "LOOKAHEAD": str(r["nav"].get("lookahead", 0.6)),
-            "ROT_V": str(0.5 if walker else 0.8), "INFLATION_RADIUS": f"{infl:.2f}"}
+            "ROT_V": str(0.5 if walker else 0.8), "PROGRESS_TIMEOUT": "45.0" if walker else "20.0", "INFLATION_RADIUS": f"{infl:.2f}"}
 
 
 def write(path: Path, text: str):

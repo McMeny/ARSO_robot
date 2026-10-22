@@ -33,25 +33,26 @@
   ],
   "arrivals": [
     {
-      "t": 39.1,
+      "t": 40.43,
       "id": 2,
       "label": "Bread",
-      "time_to_goal_s": 33.49
+      "time_to_goal_s": 34.82
     },
     {
-      "t": 58.68,
+      "t": 61.61,
       "id": 3,
       "label": "Milk",
-      "time_to_goal_s": 18.05
+      "time_to_goal_s": 19.65
     }
   ],
-  "path_length_m": 15.33,
-  "min_clearance_m": 0.157,
+  "path_length_m": 15.4,
+  "min_clearance_m": 0.203,
   "collisions": 0,
   "contact_frames": 0,
-  "collision_monitor_activations": 3,
+  "collision_monitor_activations": 5,
   "mux_share": {
-    "NAVIGATION": 1.0
+    "NAVIGATION": 0.639,
+    "NONE": 0.361
   },
   "states_seen": [
     "ASSIST",
@@ -62,17 +63,9 @@
     "ASSIST"
   ],
   "final_state": "ASSIST",
-  "odom_drift_m": 0.0932,
-  "odom_drift_per_m": 0.00608,
+  "odom_drift_m": 0.0873,
+  "odom_drift_per_m": 0.00567,
   "nav_failures": 0,
-  "video": "C:\\Users\\minua\\Downloads\\Robotics\\ARSO_robot\\outputs\\videos\\S6_supermarket_queue.mp4",
-  "stills": [
-    {
-      "file": "outputs\\stills\\S6_supermarket_queue_queued.png",
-      "t": 19.0,
-      "caption": "ENGAGED \u2192 Bread with Milk queued (badge 1)."
-    }
-  ],
   "expectation_failures": [],
   "passed": true
 }
