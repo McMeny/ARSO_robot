@@ -7,58 +7,46 @@
   "eeg": "SIMULATED",
   "selections": [
     {
-      "t": 4.47,
-      "id": 1,
-      "label": "Beans",
-      "correct": false
-    },
-    {
-      "t": 5.49,
+      "t": 5.35,
       "id": 2,
       "label": "Bread",
       "correct": true
     },
     {
-      "t": 16.5,
-      "id": 3,
-      "label": "Milk",
-      "correct": true
-    },
-    {
-      "t": 18.49,
+      "t": 16.64,
       "id": 3,
       "label": "Milk",
       "correct": true
     }
   ],
-  "correct_selections": 3,
-  "false_selections": 1,
+  "correct_selections": 2,
+  "false_selections": 0,
   "false_per_min_lookaround": null,
   "arrivals": [
     {
-      "t": 36.6,
-      "id": 1,
-      "label": "Beans",
-      "time_to_goal_s": 32.05
-    },
-    {
-      "t": 63.03,
+      "t": 46.41,
       "id": 2,
       "label": "Bread",
-      "time_to_goal_s": 24.98
+      "time_to_goal_s": 40.99
+    },
+    {
+      "t": 69.95,
+      "id": 3,
+      "label": "Milk",
+      "time_to_goal_s": 21.88
     }
   ],
   "detection_latency_s": [
-    2.49,
-    2.5
+    2.35,
+    2.64
   ],
-  "path_length_m": 13.87,
-  "min_clearance_m": 0.143,
+  "path_length_m": 15.71,
+  "min_clearance_m": 0.137,
   "collisions": 0,
-  "collision_monitor_activations": 2,
+  "collision_monitor_activations": 6,
   "mux_share": {
-    "NAVIGATION": 0.948,
-    "NONE": 0.052
+    "NAVIGATION": 0.489,
+    "NONE": 0.511
   },
   "states_seen": [
     "ASSIST",
@@ -66,13 +54,9 @@
     "ARRIVED",
     "ENGAGED",
     "ARRIVED",
-    "ENGAGED"
+    "ASSIST"
   ],
-  "final_state": "ENGAGED",
-  "expectation_failures": [
-    "visited [1, 2] != [2, 3]",
-    "final state ENGAGED != ASSIST",
-    "false selections 1 > 0"
-  ],
-  "passed": false
+  "final_state": "ASSIST",
+  "expectation_failures": [],
+  "passed": true
 }

@@ -75,6 +75,23 @@ static void test_pid_step_response() {
   CHECK(es_get_pwm(&s, 0) > 0 && es_get_pwm(&s, 0) <= 255);
 }
 
+static void test_small_command_moves() {
+  // walker gains (Kp 30, Ko 50): a 1-count-per-loop target must still produce PWM (no truncation)
+  es_state_t s; es_init(&s, 30, 10, 0, 50, 255, 42, 4, 200, 57600, "walker");
+  Motor m = {0};
+  int32_t moved = 0;
+  for (int k = 0; k < 90; k++) {
+    uint32_t now = k * 33;
+    if (k % 3 == 0) send(&s, "m 1 1\r", now);
+    es_pid_step(&s, now);
+    int32_t d = motor_step(&m, es_get_pwm(&s, 0));
+    es_add_encoder(&s, d, d);
+    moved += d;
+  }
+  printf("  1 count/loop target: moved %d counts in 90 loops, pwm %d\n", (int)moved, (int)es_get_pwm(&s, 0));
+  CHECK(moved >= 45 && es_get_pwm(&s, 0) > 0);
+}
+
 static void test_watchdog() {
   es_state_t s; init(&s);
   Motor m = {0};
@@ -130,6 +147,7 @@ int main() {
   printf("eyesteer_fw host tests (state %d bytes)\n", es_state_size());
   test_parser();
   test_pid_step_response();
+  test_small_command_moves();
   test_watchdog();
   test_estop_latch();
   test_walker_extension();

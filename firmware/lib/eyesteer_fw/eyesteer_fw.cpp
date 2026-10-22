@@ -18,6 +18,7 @@ static void reset_pid(es_state_t *s) {
     w->prev_input = 0;
     w->iterm = 0;
     w->output = 0;
+    w->acc = 0;
   }
 }
 
@@ -87,6 +88,8 @@ static void exec_line(es_state_t *s, uint32_t now_ms) {
       if (s->estop_latched) { respond(s, "OK"); break; }
       reset_pid(s);
       s->open_loop = 1;
+      s->w[0].acc = (int32_t)a * s->ko;
+      s->w[1].acc = (int32_t)b * s->ko;
       s->moving = (a != 0 || b != 0);
       s->w[0].output = clamp32((int32_t)a, -s->max_pwm, s->max_pwm);
       s->w[1].output = clamp32((int32_t)b, -s->max_pwm, s->max_pwm);
@@ -206,20 +209,23 @@ void es_pid_step(es_state_t *s, uint32_t now_ms) {
     w->prev_enc = w->enc;
     if (!s->moving) {
       // keep the derivative term from kicking on restart
-      if (w->prev_input != 0 || w->output != 0 || w->ramped != 0) { w->prev_input = 0; w->output = 0; w->iterm = 0; w->ramped = 0; }
+      if (w->prev_input != 0 || w->output != 0 || w->ramped != 0) { w->prev_input = 0; w->output = 0; w->acc = 0; w->iterm = 0; w->ramped = 0; }
       continue;
     }
     // acceleration limit on the setpoint
     int32_t d = clamp32(w->target - w->ramped, -s->max_accel, s->max_accel);
     w->ramped += d;
-    // ROSArduinoBridge velocity-form PID
+    // ROSArduinoBridge velocity-form PID, but accumulated in units of PWM*Ko: the original divides by Ko
+    // every loop, so Kp*err < Ko (e.g. a 1-count error with Kp 30 / Ko 50) never moves the output and a
+    // slow command (a slow in-place turn) is ignored forever.
     int32_t err = w->ramped - input;
-    int32_t out = (s->kp * err - s->kd * (input - w->prev_input) + w->iterm) / s->ko;
-    out += w->output;
-    if (out >= s->max_pwm) out = s->max_pwm;
-    else if (out <= -s->max_pwm) out = -s->max_pwm;
+    int32_t acc = w->acc + s->kp * err - s->kd * (input - w->prev_input) + w->iterm;
+    int32_t lim = s->max_pwm * s->ko;
+    if (acc >= lim) acc = lim;
+    else if (acc <= -lim) acc = -lim;
     else w->iterm += s->ki * err;
-    w->output = out;
+    w->acc = acc;
+    w->output = acc / s->ko;
     w->prev_input = input;
   }
   if (s->w[0].target == 0 && s->w[1].target == 0 && s->w[0].ramped == 0 && s->w[1].ramped == 0) {

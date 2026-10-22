@@ -7,39 +7,33 @@
   "eeg": "SIMULATED",
   "selections": [
     {
-      "t": 11.01,
-      "id": 3,
-      "label": "C",
-      "correct": true
-    },
-    {
-      "t": 12.96,
+      "t": 11.48,
       "id": 3,
       "label": "C",
       "correct": true
     }
   ],
-  "correct_selections": 2,
+  "correct_selections": 1,
   "false_selections": 0,
   "false_per_min_lookaround": null,
   "arrivals": [
     {
-      "t": 34.17,
+      "t": 19.23,
       "id": 3,
       "label": "C",
-      "time_to_goal_s": 23.02
+      "time_to_goal_s": 7.68
     }
   ],
   "detection_latency_s": [
-    2.01
+    2.48
   ],
-  "path_length_m": 19.84,
-  "min_clearance_m": 0.13,
+  "path_length_m": 18.73,
+  "min_clearance_m": 0.15,
   "collisions": 0,
-  "collision_monitor_activations": 0,
+  "collision_monitor_activations": 3,
   "mux_share": {
-    "NAVIGATION": 0.969,
-    "NONE": 0.031
+    "NAVIGATION": 0.97,
+    "NONE": 0.03
   },
   "states_seen": [
     "WANDER",

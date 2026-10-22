@@ -11,12 +11,13 @@
   "false_per_min_lookaround": 0.0,
   "arrivals": [],
   "detection_latency_s": [],
-  "path_length_m": 33.2,
-  "min_clearance_m": 0.327,
+  "path_length_m": 33.09,
+  "min_clearance_m": 0.172,
   "collisions": 0,
-  "collision_monitor_activations": 2,
+  "collision_monitor_activations": 3,
   "mux_share": {
-    "NAVIGATION": 1.0
+    "NAVIGATION": 0.999,
+    "NONE": 0.001
   },
   "states_seen": [
     "WANDER"

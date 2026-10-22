@@ -13,37 +13,43 @@
       "correct": true
     },
     {
-      "t": 17.15,
+      "t": 8.43,
+      "id": 1,
+      "label": "A",
+      "correct": true
+    },
+    {
+      "t": 17.19,
       "id": 4,
       "label": "D",
       "correct": true
     }
   ],
-  "correct_selections": 2,
+  "correct_selections": 3,
   "false_selections": 0,
   "false_per_min_lookaround": null,
   "arrivals": [
     {
-      "t": 32.49,
+      "t": 39.0,
       "id": 1,
       "label": "A",
-      "time_to_goal_s": 25.95
+      "time_to_goal_s": 32.37
     },
     {
-      "t": 51.6,
+      "t": 53.89,
       "id": 4,
       "label": "D",
-      "time_to_goal_s": 17.45
+      "time_to_goal_s": 13.33
     }
   ],
   "detection_latency_s": [
     2.47,
-    2.15
+    2.19
   ],
-  "path_length_m": 36.53,
-  "min_clearance_m": 0.097,
+  "path_length_m": 35.09,
+  "min_clearance_m": 0.091,
   "collisions": 0,
-  "collision_monitor_activations": 1,
+  "collision_monitor_activations": 3,
   "mux_share": {
     "NAVIGATION": 0.97,
     "NONE": 0.03

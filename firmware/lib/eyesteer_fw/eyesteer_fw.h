@@ -36,6 +36,7 @@ typedef struct {
   int32_t prev_input;
   int32_t iterm;
   int32_t output;      // PWM, signed
+  int32_t acc;         // output * Ko (keeps the sub-PWM remainder: no integer truncation of small errors)
 } es_wheel_t;
 
 typedef struct {
