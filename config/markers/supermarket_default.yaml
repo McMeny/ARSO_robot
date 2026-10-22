@@ -1,0 +1,9 @@
+# Default virtual marker layout for the supermarket world (map frame).
+frame_id: map
+markers:
+  - {id: 1, label: Beans, slot: 1, x: -3.6, y: 1.4, z: 1.5, facing: 0.0}       # on shelf_1, east face (aisle 1-2)
+  - {id: 2, label: Bread, slot: 2, x: -0.9, y: 2.0, z: 1.5, facing: 0.0}       # on shelf_2, east face (aisle 2-3)
+  - {id: 3, label: Milk, slot: 3, x: 2.8, y: 4.25, z: 1.6, facing: -1.571}     # fridge front
+  - {id: 4, label: Produce, slot: 4, x: -6.2, y: 0.3, z: 1.1, facing: -1.571}    # produce table, south end
+  - {id: 5, label: Checkout, slot: 5, x: 2.8, y: -3.7, z: 1.3, facing: 1.571}  # checkout_1
+  - {id: 6, label: CANCEL, slot: CANCEL, x: -6.8, y: -2.6, z: 1.5, facing: 0.0, cancel: true}

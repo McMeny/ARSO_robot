@@ -1,0 +1,12 @@
+# Default virtual marker layout for the field world (map frame).
+# In the real system the user places these in the headset; in sim this file plays that role.
+# facing = yaw of the panel normal (direction the robot approaches from); the goal pose is
+# `approach_distance` along the normal, facing the marker.
+frame_id: map
+markers:
+  - {id: 1, label: A, slot: 1, x: -4.5, y: 4.5, z: 1.4, facing: -0.785}
+  - {id: 2, label: B, slot: 2, x: 4.5, y: 4.5, z: 1.4, facing: -2.356}
+  - {id: 3, label: C, slot: 3, x: 4.5, y: -4.5, z: 1.4, facing: 2.356}
+  - {id: 4, label: D, slot: 4, x: 0.2, y: 4.6, z: 1.4, facing: -1.571}
+  - {id: 5, label: E, slot: 5, x: -0.5, y: -4.6, z: 1.4, facing: 1.571}
+  - {id: 6, label: CANCEL, slot: CANCEL, x: -4.7, y: -1.6, z: 1.4, facing: 0.0, cancel: true}

@@ -1,0 +1,12 @@
+# Core + standalone sim (Python >= 3.10). Versions verified on Windows 11 / Python 3.12 and Ubuntu 22.04 / Python 3.10.
+mujoco>=3.2,<4
+numpy>=1.24
+scipy>=1.10
+matplotlib>=3.7
+pillow>=10.0
+imageio>=2.31
+imageio-ffmpeg>=0.4.9
+pyyaml>=6.0
+pytest>=7.4
+pylsl>=1.16
+pyserial>=3.5

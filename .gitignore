@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+firmware/.pio/
+webxr/node_modules/
+webxr/test-results/
+outputs/logs/
+outputs/frames/
+deploy/certs/*.pem
+deploy/certs/*.key
+*.egg-info/
+.venv/

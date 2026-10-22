@@ -1,0 +1,52 @@
+# BCI configuration. `frequencies` is DERIVED: run `make generate`
+# (tools/compute_frequencies.py rewrites config/generated/frequencies.yaml from refresh_hz).
+# The headset app and the decoder both load the generated table and check its hash.
+refresh_hz_from: hardware.yaml      # headset.refresh_hz
+
+frequency_rules:
+  f_min: 6.0
+  f_max: 16.0
+  alpha_exclude: [9.5, 10.5]
+  harmonic_tolerance: 0.15
+  harmonics_checked: [2, 3]
+  preferred_band: [6.5, 13.0]       # strongest SSVEP response; below beta
+  min_spacing: 0.4
+  n_slots: 6                        # 5 destinations + CANCEL (highest frequency)
+
+fs: 256
+decoder:
+  window_s: 2.0
+  step_s: 0.25
+  bandpass: [5.0, 40.0]
+  notch_hz: 60.0
+  harmonics: 3
+
+intent:                             # anti-Midas-touch rules (defaults chosen from bci_tradeoff.png)
+  rho_threshold: 0.35
+  margin_threshold: 0.08
+  dwell_windows: 4
+  refractory_s: 2.0
+
+engagement:
+  gate: soft                        # off | soft | required
+  baseline_s: 30.0
+  z_required: 0.0                   # gate 'required': z must exceed this
+  soft_rho_bonus: 0.05              # gate 'soft': threshold relaxed when z > 1, raised when z < -1
+
+signal_quality:
+  flat_uv: 0.5                      # std below this over 1 s -> flat-line
+  saturation_uv: 1500.0
+  max_std_uv: 300.0
+  line_noise_max_ratio: 50.0
+
+synthetic:
+  snr: 1.0                          # SSVEP amplitude relative to the background noise std
+  ssvep_amplitude_uv: 2.5
+  latency_s: 0.15
+  ramp_s: 0.5
+  seed: 7
+
+calibration:
+  per_marker_s: 10.0
+  rest_s: 20.0
+  profile_dir: ~/.eyesteer/profiles

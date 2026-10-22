@@ -1,0 +1,96 @@
+# =====================================================================
+# hardware.yaml: the ONLY file normally edited on site.
+# Every hardware-specific value lives here (or in robot_*.yaml).
+# After editing, run:  make generate
+# =====================================================================
+
+robot: walker                 # field_robot | walker  (which robot_*.yaml is active on the real system)
+
+compute:
+  board: jetson_orin          # jetson_orin_nano | jetson_orin_nx | jetson_agx_orin
+  # JetPack 6.x (Orin) ships Ubuntu 22.04 -> ROS 2 Humble. Ubuntu 24.04 -> Jazzy.
+  # jetson_setup.sh auto-detects; this is only the fallback.
+  ros_distro: humble          # humble | jazzy
+  rmw: rmw_cyclonedds_cpp     # rmw_cyclonedds_cpp | rmw_fastrtps_cpp | rmw_zenoh_cpp
+  ros_domain_id: 42
+
+base:
+  type: custom_arduino_diffdrive   # custom_arduino_diffdrive | cmd_vel_base
+  # cmd_vel_base: any base with its own ROS 2 driver (e.g. TurtleBot 4 / Create 3).
+  # The upper stack then publishes /cmd_vel and expects /odom + odom->base_footprint TF from the vendor driver.
+  cmd_vel_base_topic: /cmd_vel
+
+mcu:
+  board: mega2560             # mega2560 | uno | teensy41 | esp32  (PlatformIO env name)
+  device: /dev/eyesteer_mcu   # udev symlink (deploy/udev/99-eyesteer.rules)
+  usb_vid: "2341"             # Arduino Mega 2560 R3 (genuine). CH340 clones: 1a86 / 7523. Find with: udevadm info -a -n /dev/ttyACM0 | grep idVendor
+  usb_pid: "0042"
+  baud: 57600                 # diffdrive_arduino default (ROSArduinoBridge protocol)
+  pid_rate_hz: 30             # firmware PID loop; MUST equal ros2_control loop_rate (counts-per-loop units)
+  serial_timeout_ms: 1000
+  watchdog_ms: 200            # D9: no valid command for this long -> motors stop
+  max_pwm: 255
+
+motor_driver:
+  type: pwm_dir               # pwm_dir (Cytron MDD10A style) | l298n (IN1/IN2/EN)
+  # Pin numbers are for the Mega 2560 default build; other boards have their own block below.
+  pins:
+    mega2560: {left_pwm: 5, left_dir: 4, right_pwm: 6, right_dir: 7, left_enc_a: 2, left_enc_b: 22, right_enc_a: 3, right_enc_b: 24, estop: 18, grip: 26, hx_left_dout: 30, hx_left_sck: 31, hx_right_dout: 32, hx_right_sck: 33}
+    uno:      {left_pwm: 5, left_dir: 4, right_pwm: 6, right_dir: 7, left_enc_a: 2, left_enc_b: 8, right_enc_a: 3, right_enc_b: 9, estop: 12, grip: 13, hx_left_dout: 10, hx_left_sck: 11, hx_right_dout: 14, hx_right_sck: 15}
+    teensy41: {left_pwm: 5, left_dir: 4, right_pwm: 6, right_dir: 7, left_enc_a: 2, left_enc_b: 22, right_enc_a: 3, right_enc_b: 23, estop: 18, grip: 19, hx_left_dout: 30, hx_left_sck: 31, hx_right_dout: 32, hx_right_sck: 33}
+    esp32:    {left_pwm: 25, left_dir: 26, right_pwm: 27, right_dir: 14, left_enc_a: 34, left_enc_b: 35, right_enc_a: 32, right_enc_b: 33, estop: 4, grip: 13, hx_left_dout: 16, hx_left_sck: 17, hx_right_dout: 18, hx_right_sck: 19}
+  invert_left: false          # flip if motor_test.py shows the left wheel spinning backwards
+  invert_right: true          # mirrored mounting: right motor is usually reversed
+  invert_left_encoder: false
+  invert_right_encoder: true
+
+encoders:
+  counts_per_rev: 1320        # MEASURE ON THE REAL ROBOT (motor_test.py --measure-cpr)
+
+lidar:
+  model: rplidar_c1           # rplidar_a1 | rplidar_a2 | rplidar_c1
+  driver: sllidar_ros2        # Slamtec's current ROS 2 driver (supports A1/A2/A3/C1/S-series)
+  device: /dev/lidar
+  usb_vid: "10c4"             # CP2102 bridge used by RPLIDAR A1/A2/C1
+  usb_pid: "ea60"
+  baud: {rplidar_a1: 115200, rplidar_a2: 115200, rplidar_c1: 460800}
+  frame_id: laser_frame
+  rate_hz: 10
+  range_min: 0.15
+  range_max: 12.0
+  angle_compensate: true
+
+imu:
+  present: false              # set true and fill in if an IMU is fitted
+  driver: none                # e.g. bno055 | ros2_icm20948
+  topic: /imu/data
+
+headset:
+  model: meta_quest_3
+  refresh_hz: 90              # 72 | 90 | 120 (must match the Quest display setting)
+  web_port: 8443              # HTTPS static server for the WebXR app
+  rosbridge_port: 9090        # wss://
+
+eeg:
+  source_tool: muselsl        # muselsl | petal | mind_monitor_bridge | eye_as_camera
+  # Per-tool LSL stream descriptions. ssvep_node resolves `stream_name`/`stream_type`
+  # and maps channels by index. The Muse emulator publishes exactly this layout.
+  tools:
+    muselsl:      {stream_name: Muse, stream_type: EEG, channels: [TP9, AF7, AF8, TP10, Right AUX], fs: 256, units: microvolts}
+    petal:        {stream_name: PetalStream_eeg, stream_type: EEG, channels: [TP9, AF7, AF8, TP10, AUX], fs: 256, units: microvolts}
+    mind_monitor_bridge: {stream_name: MindMonitor, stream_type: EEG, channels: [TP9, AF7, AF8, TP10, AUX], fs: 256, units: microvolts}
+    eye_as_camera: {stream_name: Muse, stream_type: EEG, channels: [TP9, AF7, AF8, TP10, Right AUX], fs: 256, units: microvolts}
+  channel_map: {TP9: 0, AF7: 1, AF8: 2, TP10: 3, Oz: 4}   # Oz = the cup electrode on the AUX input
+  resolve_timeout_s: 5.0
+  expected_fs: 256
+  line_freq_hz: 60            # 50 in Europe
+
+network:
+  jetson_host: eyesteer.local # or the Jetson's IP
+  hotspot: false
+
+walker:
+  load_cells: hx711           # HX711 per handle
+  load_cell_scale: [420.0, 420.0]   # counts per newton; MEASURE ON THE REAL WALKER (calibrate with a known weight)
+  grip_sensor: switch         # switch | capacitive
+  grip_active_low: true

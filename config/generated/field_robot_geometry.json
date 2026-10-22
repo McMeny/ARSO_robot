@@ -1,0 +1,117 @@
+{
+  "derived": {
+    "wheel_radius": 0.036,
+    "wheel_width": 0.026,
+    "wheel_separation": 0.235,
+    "wheel_x": 0.0,
+    "wheel_mass": 0.15,
+    "base_mass": 3.5,
+    "base_height": 0.1,
+    "base_z_center": 0.03400000000000001,
+    "base_radius": 0.17,
+    "base_x_center": 0.0,
+    "lidar_x": 0.0,
+    "lidar_y": 0.0,
+    "lidar_yaw": 0.0,
+    "lidar_z": 0.164,
+    "lidar_radius": 0.035,
+    "lidar_height": 0.04,
+    "imu_x": 0.0,
+    "imu_y": 0.0,
+    "imu_z": 0.024,
+    "camera_x": 0.15,
+    "camera_y": 0.0,
+    "camera_z": 0.11399999999999999
+  },
+  "footprint": {
+    "type": "circle",
+    "radius": 0.17,
+    "padding": 0.02
+  },
+  "robot": {
+    "name": "field_robot",
+    "idle_mode": "WANDER",
+    "base": {
+      "shape": "cylinder",
+      "radius": 0.17,
+      "height": 0.1,
+      "ground_clearance": 0.02,
+      "mass": 3.5
+    },
+    "wheels": {
+      "radius": 0.036,
+      "width": 0.026,
+      "separation": 0.235,
+      "x": 0.0,
+      "mass": 0.15
+    },
+    "casters": [
+      {
+        "name": "front_caster",
+        "x": 0.13,
+        "y": 0.0,
+        "radius": 0.018
+      },
+      {
+        "name": "rear_caster",
+        "x": -0.13,
+        "y": 0.0,
+        "radius": 0.018
+      }
+    ],
+    "lidar": {
+      "x": 0.0,
+      "y": 0.0,
+      "z_above_ground": 0.2,
+      "yaw": 0.0,
+      "radius": 0.035,
+      "height": 0.04,
+      "masked_sectors_deg": []
+    },
+    "imu": {
+      "x": 0.0,
+      "y": 0.0,
+      "z_above_ground": 0.06
+    },
+    "camera": {
+      "x": 0.15,
+      "y": 0.0,
+      "z_above_ground": 0.15
+    },
+    "limits": {
+      "v_max": 0.6,
+      "w_max": 1.5,
+      "a_max": 0.8,
+      "alpha_max": 3.0
+    },
+    "footprint": {
+      "type": "circle",
+      "radius": 0.17,
+      "padding": 0.02
+    },
+    "nav": {
+      "inflation_radius": 0.45,
+      "cost_scaling_factor": 3.0,
+      "goal_xy_tolerance": 0.3,
+      "goal_yaw_tolerance_deg": 20,
+      "approach_distance": 0.6
+    },
+    "pid": {
+      "kp": 20,
+      "kd": 12,
+      "ki": 0,
+      "ko": 50
+    },
+    "calibration_decals": {
+      "front": {
+        "x": 0.12,
+        "y": 0.0
+      },
+      "rear": {
+        "x": -0.12,
+        "y": 0.0
+      },
+      "plate_height": 0.12
+    }
+  }
+}

@@ -1,0 +1,18 @@
+# Field world: 10 x 10 m fenced area (map frame == world frame in sim; origin at the center).
+name: field
+bounds: [-5.0, -5.0, 5.0, 5.0]       # xmin ymin xmax ymax (inside of the fence)
+fence: {height: 0.5, thickness: 0.1}
+field_polygon: [[-4.4, -4.4], [4.4, -4.4], [4.4, 4.4], [-4.4, 4.4]]   # wander region
+obstacles:                          # static boxes (x, y = center; sx, sy = full size)
+  - {name: crate_a, type: box, x: -2.0, y: 1.6, sx: 2.4, sy: 0.4, h: 0.6, yaw: 0.0}
+  - {name: crate_b, type: box, x: 2.2, y: -1.4, sx: 0.4, sy: 2.6, h: 0.6, yaw: 0.0}
+  - {name: crate_c, type: box, x: 1.6, y: 2.4, sx: 1.6, sy: 0.4, h: 0.6, yaw: 0.0}
+  - {name: crate_d, type: box, x: -1.8, y: -2.2, sx: 0.4, sy: 1.8, h: 0.6, yaw: 0.0}
+  - {name: barrel_a, type: cylinder, x: 0.2, y: -0.2, r: 0.3, h: 0.8}
+  - {name: barrel_b, type: cylinder, x: -3.4, y: -0.4, r: 0.25, h: 0.8}
+  - {name: barrel_c, type: cylinder, x: 3.6, y: 1.0, r: 0.25, h: 0.8}
+people:                             # moving obstacles (seen by LiDAR), scripted paths, looped
+  - {name: person_1, radius: 0.22, speed: 0.5, path: [[-4.0, 3.6], [0.0, 3.6], [0.0, 0.9], [-4.0, 0.9]]}
+  - {name: person_2, radius: 0.22, speed: 0.4, path: [[3.5, -3.8], [3.5, 3.2]]}
+start_pose: [-3.8, -3.8, 0.785]
+default_markers: field_default

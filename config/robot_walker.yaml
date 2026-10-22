@@ -1,0 +1,90 @@
+# Smart walker (powered rollator retrofit): single source of truth (D14).
+# base_link sits on the REAR drive axle. +x points from the user towards the front casters.
+# Values marked "MEASURE" are placeholders.
+name: walker
+idle_mode: ASSIST           # D11: walker NEVER wanders with a person attached
+
+base:
+  shape: box
+  length: 0.70              # MEASURE ON THE REAL WALKER
+  width: 0.62               # MEASURE ON THE REAL WALKER
+  height: 0.08              # lower frame rail / battery box thickness
+  x_offset: 0.25            # box center ahead of the rear axle
+  ground_clearance: 0.12
+  mass: 18.0                # MEASURE ON THE REAL WALKER
+
+wheels:
+  radius: 0.10              # hub motors; MEASURE ON THE REAL WALKER
+  width: 0.04
+  separation: 0.56          # MEASURE ON THE REAL WALKER
+  x: 0.0
+  mass: 1.2
+
+casters:
+  - {name: front_left_caster, x: 0.55, y: 0.24, radius: 0.05}
+  - {name: front_right_caster, x: 0.55, y: -0.24, radius: 0.05}
+
+handles:
+  x: -0.08                  # handle grips slightly behind the rear axle
+  y: 0.25                   # +/- y
+  z_above_ground: 0.90      # MEASURE ON THE REAL WALKER (user-adjustable)
+
+battery_box: {x: 0.20, length: 0.25, width: 0.20, height: 0.12}
+
+lidar:
+  x: 0.58
+  y: 0.0
+  z_above_ground: 0.30
+  yaw: 0.0
+  radius: 0.035
+  height: 0.04
+  # The frame uprights and the user occlude the rear. Ranges in this sector are dropped
+  # (laser_filters angular-bounds on the real robot; skipped rays in sim).
+  masked_sectors_deg: [[135, 225]]
+
+imu: {x: 0.20, y: 0.0, z_above_ground: 0.20}
+camera: {x: 0.60, y: 0.0, z_above_ground: 0.45}
+
+limits:
+  v_max: 0.5
+  w_max: 0.8
+  a_max: 0.4
+  alpha_max: 1.0
+
+user_zone:                  # D10: footprint includes the person behind the handles
+  depth_behind_handles: 0.55
+  side_margin: 0.05
+
+footprint:
+  type: polygon             # computed by the generator from base + user_zone
+  padding: 0.02
+
+nav:
+  inflation_radius: 0.55
+  cost_scaling_factor: 4.0
+  goal_xy_tolerance: 0.30
+  goal_yaw_tolerance_deg: 20
+  approach_distance: 0.8
+
+admittance:
+  mass: 25.0                # virtual mass [kg]
+  damping: 40.0             # virtual damping [N s/m]
+  yaw_inertia: 4.0
+  yaw_damping: 8.0
+  force_deadband: 4.0       # N per handle
+  pullback_threshold: 12.0  # N of net backward force while ENGAGED -> nav scaled down
+  pullback_stop: 30.0       # N -> nav stopped entirely
+
+deadman:
+  release_timeout_s: 0.3
+
+pid:
+  kp: 30
+  kd: 10
+  ki: 0
+  ko: 50
+
+calibration_decals:
+  front: {x: 0.50, y: 0.0}
+  rear: {x: 0.05, y: 0.0}
+  plate_height: 0.22

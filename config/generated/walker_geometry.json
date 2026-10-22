@@ -1,0 +1,173 @@
+{
+  "derived": {
+    "wheel_radius": 0.1,
+    "wheel_width": 0.04,
+    "wheel_separation": 0.56,
+    "wheel_x": 0.0,
+    "wheel_mass": 1.2,
+    "base_mass": 18.0,
+    "base_height": 0.08,
+    "base_z_center": 0.06,
+    "base_length": 0.7,
+    "base_width": 0.62,
+    "base_x_center": 0.25,
+    "lidar_x": 0.58,
+    "lidar_y": 0.0,
+    "lidar_yaw": 0.0,
+    "lidar_z": 0.19999999999999998,
+    "lidar_radius": 0.035,
+    "lidar_height": 0.04,
+    "imu_x": 0.2,
+    "imu_y": 0.0,
+    "imu_z": 0.1,
+    "camera_x": 0.6,
+    "camera_y": 0.0,
+    "camera_z": 0.35,
+    "handle_x": -0.08,
+    "handle_y": 0.25,
+    "handle_z": 0.8
+  },
+  "footprint": {
+    "type": "polygon",
+    "polygon": [
+      [
+        0.6,
+        0.36
+      ],
+      [
+        -0.63,
+        0.36
+      ],
+      [
+        -0.63,
+        -0.36
+      ],
+      [
+        0.6,
+        -0.36
+      ]
+    ],
+    "radius": 0.7256,
+    "padding": 0.02,
+    "inscribed_radius": 0.36
+  },
+  "robot": {
+    "name": "walker",
+    "idle_mode": "ASSIST",
+    "base": {
+      "shape": "box",
+      "length": 0.7,
+      "width": 0.62,
+      "height": 0.08,
+      "x_offset": 0.25,
+      "ground_clearance": 0.12,
+      "mass": 18.0
+    },
+    "wheels": {
+      "radius": 0.1,
+      "width": 0.04,
+      "separation": 0.56,
+      "x": 0.0,
+      "mass": 1.2
+    },
+    "casters": [
+      {
+        "name": "front_left_caster",
+        "x": 0.55,
+        "y": 0.24,
+        "radius": 0.05
+      },
+      {
+        "name": "front_right_caster",
+        "x": 0.55,
+        "y": -0.24,
+        "radius": 0.05
+      }
+    ],
+    "handles": {
+      "x": -0.08,
+      "y": 0.25,
+      "z_above_ground": 0.9
+    },
+    "battery_box": {
+      "x": 0.2,
+      "length": 0.25,
+      "width": 0.2,
+      "height": 0.12
+    },
+    "lidar": {
+      "x": 0.58,
+      "y": 0.0,
+      "z_above_ground": 0.3,
+      "yaw": 0.0,
+      "radius": 0.035,
+      "height": 0.04,
+      "masked_sectors_deg": [
+        [
+          135,
+          225
+        ]
+      ]
+    },
+    "imu": {
+      "x": 0.2,
+      "y": 0.0,
+      "z_above_ground": 0.2
+    },
+    "camera": {
+      "x": 0.6,
+      "y": 0.0,
+      "z_above_ground": 0.45
+    },
+    "limits": {
+      "v_max": 0.5,
+      "w_max": 0.8,
+      "a_max": 0.4,
+      "alpha_max": 1.0
+    },
+    "user_zone": {
+      "depth_behind_handles": 0.55,
+      "side_margin": 0.05
+    },
+    "footprint": {
+      "type": "polygon",
+      "padding": 0.02
+    },
+    "nav": {
+      "inflation_radius": 0.55,
+      "cost_scaling_factor": 4.0,
+      "goal_xy_tolerance": 0.3,
+      "goal_yaw_tolerance_deg": 20,
+      "approach_distance": 0.8
+    },
+    "admittance": {
+      "mass": 25.0,
+      "damping": 40.0,
+      "yaw_inertia": 4.0,
+      "yaw_damping": 8.0,
+      "force_deadband": 4.0,
+      "pullback_threshold": 12.0,
+      "pullback_stop": 30.0
+    },
+    "deadman": {
+      "release_timeout_s": 0.3
+    },
+    "pid": {
+      "kp": 30,
+      "kd": 10,
+      "ki": 0,
+      "ko": 50
+    },
+    "calibration_decals": {
+      "front": {
+        "x": 0.5,
+        "y": 0.0
+      },
+      "rear": {
+        "x": 0.05,
+        "y": 0.0
+      },
+      "plate_height": 0.22
+    }
+  }
+}
