@@ -40,6 +40,7 @@ reconnects every 2 s and re-subscribes; latched topics (`/markers`, `/xr/calibra
 | `/amcl_pose`, `/sim/ground_truth` | `geometry_msgs/PoseWithCovarianceStamped`, `nav_msgs/Odometry` | → headset | ≤ 10 Hz |
 | `/sim/people` | `geometry_msgs/PoseArray` (x, y, z = radius; sim only) | → headset | 5 Hz |
 | `/eyesteer/latency` | `std_msgs/String` (JSON `{event, wall, dt_ms…}`) | → headset | events |
+| `/eyesteer/status_ack` | `std_msgs/String` (displayed state) | headset → | on every displayed state change (latency on one clock) |
 | `/eyesteer/ping` | `std_msgs/String` (page time) | headset → | 0.5 Hz; answered by a `pong` on `/eyesteer/latency` (clock offset) |
 | `/xr/timing` | `eyesteer_interfaces/XrTiming` | headset → | 2 Hz (also the headset heartbeat: 3 s silence = disconnected) |
 | `/xr/anchors` | `eyesteer_interfaces/MarkerArray` (frame `map` or `headset`) | headset → | on edit |

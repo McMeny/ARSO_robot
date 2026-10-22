@@ -37,7 +37,11 @@ async function boot() {
   }
   S.ros = new RosLink(defaultUrl(location, S.cfg.rosbridge_port), {
     onConnection: (ok) => { S.connected = ok; renderConn(); },
-    onStatus: (m) => { S.status = m; renderStatus(); },
+    onStatus: (m) => {
+      if (!S.status || S.status.display !== m.display) S.ros.pub("/eyesteer/status_ack", "std_msgs/String", { data: m.display });
+      S.status = m;
+      renderStatus();
+    },
     onMarkers: (m) => { S.markers = m.markers.map(msgToMarker); renderMode(); },
     onBci: (m) => { S.bci = m; renderBci(); },
     onHealth: (m) => { S.health = m; renderHealth(); },
@@ -64,7 +68,7 @@ async function boot() {
   setupXrButton();
   setMode("run");
   setInterval(publishTiming, 500);
-  setInterval(publishGaze, 100);
+  setInterval(publishGaze, 50);
   setInterval(() => S.ros.pub("/eyesteer/ping", "std_msgs/String", { data: String(Date.now() / 1000) }), 2000);
   requestAnimationFrame(previewLoop);
 }
@@ -139,6 +143,7 @@ function onPreviewClick(ev) {
   if (S.mode === "run") {
     const m = markerAt(u, v);
     S.aimed = m ? m.id : 0;
+    publishGaze();
   } else if (S.mode === "place") {
     const [x, y] = c2w(u, v);
     placeMarker({ x, y, z: 1.4 }, "map");
@@ -456,13 +461,16 @@ function clockOffset() {
   const best = [...S.offsets].sort((a, b) => a.rtt - b.rtt).slice(0, 5);
   return best.reduce((a, b) => a + b.off, 0) / best.length;
 }
+function clockRtt() {
+  return S.offsets.length ? Math.min(...S.offsets.map((o) => o.rtt)) : null;
+}
 
 // ------------------------------------------------------------------ test hooks (Playwright headless headset client)
 window.eyesteer = {
   state: () => ({ blocked: S.blocked, connected: S.connected, consent: S.consent, mode: S.mode, markers: S.markers, status: S.status,
                   bci: S.bci, health: S.health, cal: S.cal, aimed: S.aimed, frame: S.frame, selections: S.selections,
                   tableHash: S.table && S.table.hash, refresh: S.timing.snappedHz(), latency: S.latency, aimLog: S.aimLog,
-                  pose: S.pose, people: S.people || [], clockOffset: clockOffset() }),
+                  pose: S.pose, people: S.people || [], clockOffset: clockOffset(), clockRtt: clockRtt() }),
   pub: (topic, type, msg) => S.ros.pub(topic, type, msg),
   placeHeadsetFrame: (list) => {     // markers given in map coordinates, sent as the headset would: in its own frame
     const hs = list.map((m) => { const h = mapToHeadset([m.x, m.y, m.z], S.cal); return { ...m, x: h[0], y: h[1], z: h[2],
@@ -472,7 +480,7 @@ window.eyesteer = {
   disconnect: () => { S.ros.ros.close(); clearTimeout(S.ros.timer); S.ros.connect = () => {}; },
   consent: () => $("consent-ok").click(),
   setMode,
-  aim: (id) => { S.aimed = id; S.aimLog.push({ id, t: Date.now() }); },
+  aim: (id) => { S.aimed = id; S.aimLog.push({ id, t: Date.now() }); publishGaze(); },
   placeMarkers: (list) => sendMarkers(list.map((m) => ({ ...m, frequency: frequencyFor(m.slot, S.table) }))),
   placeAt: (x, y, z, label, cancel) => placeMarker({ x, y, z }, "map", label, cancel),
   calibrateSim: (truth) => computeCalibration(...simulatedDecalTouch(truth)),

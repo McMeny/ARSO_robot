@@ -32,7 +32,8 @@ def session(seed: int, snr: float, freqs: list, fs=256):
     followed by 90 s of looking around (glances + blinks). Returns decode results + ground truth."""
     rng = np.random.default_rng(seed)
     sim = SyntheticEEG(snr=snr, seed=seed)
-    dec = SSVEPDecoder(freqs, list(range(len(freqs))), fs=fs)
+    d = config.bci()["decoder"]
+    dec = SSVEPDecoder(freqs, list(range(len(freqs))), fs=fs, window_s=d["window_s"], step_s=d["step_s"])
     timeline = []
     t = 4.0
     order = list(range(len(freqs) - 1)) * 2
@@ -98,7 +99,8 @@ def main() -> int:
     grid = grids[snr]
     # choose: N >= 3 (>= 0.75 s of consistent evidence: anti-Midas-touch), at BOTH SNRs
     # false <= 0.2/min and latency <= 3.0 s; then max accuracy at the low SNR, fewer false, lower latency
-    ok = [(k, v) for k, v in grid.items() if k[1] >= 3 and v["latency_s"] <= 3.0
+    # latency <= 2.75 s: the median leaves >= 0.25 s for the tail under the 3.0 s budget (Section 24.7)
+    ok = [(k, v) for k, v in grid.items() if k[1] >= 3 and v["latency_s"] <= 2.75
           and max(grids[sn][k]["false_per_min"] for sn in grids) <= 0.2]
     best = max(ok, key=lambda kv: (round(kv[1]["accuracy"], 2), -kv[1]["false_per_min"], -kv[1]["latency_s"])) if ok else None
     out = ROOT / "outputs/metrics"
@@ -146,8 +148,8 @@ def plot(grid, best, snr, path):
         if ylim:
             ax.set_ylim(*ylim)
     axes[0].legend(frameon=False, loc="lower left", fontsize=9, labelcolor=INK2)
-    sub = (f"Synthetic EEG, SNR {snr}, dwell step 0.25 s, margin δ = 0.08. Circled: chosen default"
-           + (f" θ = {best[0][0]}, N = {best[0][1]}" if best else "") + " (N ≥ 3; ≤ 0.2 false/min at SNR 0.8 and 1.5; ≤ 3 s latency; then max accuracy).")
+    sub = (f"Synthetic EEG, SNR {snr}, decoder step {config.bci()['decoder']['step_s']} s, margin δ = 0.08. Circled: chosen default"
+           + (f" θ = {best[0][0]}, N = {best[0][1]}" if best else "") + " (N ≥ 3; ≤ 0.2 false/min at SNR 0.8 and 1.5; median latency ≤ 2.75 s; then max accuracy).")
     fig.suptitle("SSVEP intent trade-off: SIMULATED EEG", x=0.01, ha="left", color=INK, fontsize=14, weight="bold")
     fig.text(0.01, 0.89, sub, color=INK2, fontsize=10)
     fig.tight_layout(rect=(0, 0, 1, 0.87))

@@ -95,8 +95,8 @@ def latencies(page):
             out["goal accepted -> robot moving (ms)"].append(e["dt_ms"])
         elif e["event"] == "wheel_response" and e.get("backend") == "mujoco_hil":
             out["cmd_vel -> wheel response, HIL (ms)"].append(e["dt_ms"])
-        elif e["event"] == "state":
-            out["robot state change -> visible in headset (ms)"].append(1000 * (e["rx"] - (e["wall"] - off)))
+        elif e["event"] == "state_visible":   # change -> shown in the page -> ack, on the robot's clock (upper bound)
+            out["robot state change -> visible in headset (ms)"].append(e["dt_ms"])
     for sel in st["selections"]:
         aims = [a for a in st["aimLog"] if a["id"] == sel["id"] and a["t"] <= sel["t"]]
         if aims:
@@ -198,6 +198,7 @@ def test_golden_path(robot, run):
             (golden_field if robot == "field_robot" else golden_walker)(page, tr)
             assert tr.collisions == 0, f"collision (min clearance {tr.min_clear:.3f} m)"
             lat = latencies(page)
+            rtt = page.evaluate("window.eyesteer.state().clockRtt")
             page.screenshot(path=str(ROOT / f"outputs/stills/golden_{robot}.png"))
         # 8. recordings exist (rosbag + XDF of the LSL stream)
         bag = ROOT / "outputs/logs/rosbag"
@@ -207,7 +208,7 @@ def test_golden_path(robot, run):
     for k, (lo, hi) in BUDGET.items():
         assert lat[k], f"no latency samples for {k}"
         med = statistics.median(lat[k])
-        assert lo <= med <= hi, f"latency budget violated: {k} median {med:.3g} not in [{lo}, {hi}]"
+        assert lo <= med <= hi, f"latency budget violated: {k} median {med:.3g} not in [{lo:.3g}, {hi}]"
     RESULTS[robot].append({k: statistics.median(v) for k, v in lat.items() if v})
     out = ROOT / "outputs/metrics" / f"golden_{robot}.json"
     out.write_text(json.dumps({"robot": robot, "backend": "mujoco_hil", "runs": RUNS, "passes": len(RESULTS[robot]),

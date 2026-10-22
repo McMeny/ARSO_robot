@@ -40,6 +40,7 @@ class McuBridge(Node):
         self.lock = threading.Lock()
         self.ser = None
         self.last_reply = 0.0
+        self.reconnecting = False
         self.alive = False
         self.pub_alive = self.create_publisher(Bool, "/mcu/alive", 10)
         self.pub_status = self.create_publisher(String, "/mcu/status", 10)
@@ -57,19 +58,29 @@ class McuBridge(Node):
         os.symlink(os.ttyname(self.slave), self.ros_link)
         self.open_serial()
         threading.Thread(target=self.proxy_loop, daemon=True).start()
-        self.create_timer(0.05, self.poll)
+        self.create_timer(0.1, self.poll)   # 10 Hz: leaves the serial line to diffdrive_arduino's 50 Hz e/m
         self.get_logger().info(f"mcu_bridge: {self.device} @ {self.baud} <-> {self.ros_link} (diffdrive_arduino)")
 
     def open_serial(self):
+        """Open the device AND verify that the eyesteer firmware answers ('v' -> 'V eyesteer ...') before the
+        link counts as up: a stale device link, the wrong USB device or an unflashed board must never let
+        ros2_control start against a port that does not answer."""
         while rclpy.ok():
             try:
+                if self.ser is not None:
+                    self.ser.close()
                 self.ser = serial.Serial(self.device, self.baud, timeout=0.1, write_timeout=0.1)
                 time.sleep(self.reset_wait)
                 self.ser.reset_input_buffer()
-                return
+                for _ in range(10):
+                    if self.transact(b"v\r", 0.2).startswith(b"V eyesteer"):
+                        return
+                    time.sleep(0.2)
+                self.get_logger().warn(f"{self.device} opened but the eyesteer firmware does not answer; retrying",
+                                       throttle_duration_sec=5.0)
             except (serial.SerialException, OSError) as e:
                 self.get_logger().warn(f"cannot open {self.device}: {e}; retrying", throttle_duration_sec=5.0)
-                time.sleep(1.0)
+            time.sleep(1.0)
 
     def transact(self, line: bytes, timeout: float = 0.1) -> bytes:
         """One request/response with the MCU (serialized)."""
@@ -119,6 +130,13 @@ class McuBridge(Node):
                 self.pub_grip.publish(Bool(data=h[3] == "1"))
         self.alive = time.monotonic() - self.last_reply < 0.5
         self.pub_alive.publish(Bool(data=self.alive))
+        if time.monotonic() - self.last_reply > 3.0 and not self.reconnecting:
+            self.reconnecting = True            # silent MCU (unplugged / reset / emulator restarted): reopen + verify
+
+            def _reconnect():
+                self.open_serial()
+                self.reconnecting = False
+            threading.Thread(target=_reconnect, daemon=True).start()
 
 
 def main():

@@ -85,6 +85,9 @@ class ModeManagerNode(Node):
         self.create_subscription(Odometry, "/odom", self.on_odom, 10)
         # clock-offset ping from the headset (NTP-style), so latencies across machines are measurable
         self.create_subscription(String, "/eyesteer/ping", lambda m: self.event("pong", ping=m.data), 10)
+        # the headset acknowledges each state it displays: change -> ack on ONE clock (conservative upper bound)
+        self.state_t = {}
+        self.create_subscription(String, "/eyesteer/status_ack", self.on_ack, 10)
         self.pub_status = self.create_publisher(RobotStatus, "/robot/status", 10)
         self.pub_wander = self.create_publisher(Bool, "/wander/enable", LATCHED)
         self.create_subscription(Selection, "/bci/selection", self.on_selection, 10)
@@ -132,6 +135,11 @@ class ModeManagerNode(Node):
         if not self.lat["moving_reported"] and self.lat["accepted"] and moving:
             self.lat["moving_reported"] = True
             self.event("moving", dt_ms=1000 * (time.time() - self.lat["accepted"]))
+
+    def on_ack(self, m: String):
+        t0 = self.state_t.pop(m.data, None)
+        if t0 is not None:
+            self.event("state_visible", display=m.data, dt_ms=1000 * (time.time() - t0))
 
     # ------------------------------------------------------------------ localization consistency (24.5)
     def on_scan(self, s: LaserScan):
@@ -288,6 +296,7 @@ class ModeManagerNode(Node):
         self.pub_status.publish(m)
         if m.display != self.last_display:
             self.last_display = m.display
+            self.state_t[m.display] = time.time()
             self.event("state", display=m.display)
 
 

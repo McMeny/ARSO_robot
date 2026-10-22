@@ -16,7 +16,7 @@ frequency_rules:
 fs: 256
 decoder:
   window_s: 2.0
-  step_s: 0.25
+  step_s: 0.20                      # 5 decodes per second: dwell N=3 = 0.4 s (latency budget; see DECISIONS.md)
   bandpass: [5.0, 40.0]
   notch_hz: 60.0
   harmonics: 3

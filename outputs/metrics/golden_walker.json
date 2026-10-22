@@ -2,27 +2,27 @@
   "robot": "walker",
   "backend": "mujoco_hil",
   "runs": 5,
-  "passes": 1,
-  "min_clearance_m": 0.324,
+  "passes": 2,
+  "min_clearance_m": 0.3,
   "latency": {
     "gaze onset -> selection (s)": {
-      "measured": 2.595,
+      "measured": 2.611,
       "target": "1.25-3.0"
     },
     "selection -> NavigateToPose accepted (ms)": {
-      "measured": 95.832,
+      "measured": 87.098,
       "target": "0-200"
     },
     "goal accepted -> robot moving (ms)": {
-      "measured": 230.129,
+      "measured": 255.65,
       "target": "0-1000"
     },
     "cmd_vel -> wheel response, HIL (ms)": {
-      "measured": 79.916,
+      "measured": 75.252,
       "target": "0-100"
     },
     "robot state change -> visible in headset (ms)": {
-      "measured": 15.531,
+      "measured": 5.116,
       "target": "0-300"
     }
   }
