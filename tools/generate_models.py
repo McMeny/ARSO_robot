@@ -432,12 +432,9 @@ def nav2_footprint_yaml(r: dict) -> dict:
 
 
 def collision_polygons(r: dict, grow: float) -> list[list[float]]:
-    fp = footprint(r)
-    if fp["type"] == "circle":
-        rad = fp["radius"] + grow
-        return [[round(rad * math.cos(a), 3), round(rad * math.sin(a), 3)] for a in
-                [2 * math.pi * i / 12 for i in range(12)]]
-    return [[round(x + math.copysign(grow, x), 3), round(y + math.copysign(grow, y), 3)] for x, y in fp["polygon"]]
+    sys.path.insert(0, str(ROOT))
+    from eyesteer_core.control.footprint import monitor_polygon
+    return monitor_polygon(footprint(r), grow)
 
 
 def render_template(text: str, r: dict, extra: dict) -> str:

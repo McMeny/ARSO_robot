@@ -22,9 +22,9 @@ decoder:
   harmonics: 3
 
 intent:                             # anti-Midas-touch rules (defaults chosen from bci_tradeoff.png)
-  rho_threshold: 0.35
+  rho_threshold: 0.40
   margin_threshold: 0.08
-  dwell_windows: 4
+  dwell_windows: 3
   refractory_s: 2.0
 
 engagement:

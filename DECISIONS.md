@@ -18,3 +18,15 @@ One line per decision: **decision**: reason.
 - **Chase camera uses `mode="trackcom"` with a world-fixed south-west offset**: a body-fixed chase camera ends up behind walls.
 - **Prebuilt sim maps are rasterized from the world geometry** (exact ground truth, 5 cm cells) and committed; `slam.launch.py` can rebuild them by mapping in sim.
 - **diffdrive_arduino (joshnewans, branch `humble`) confirmed**: plugin `diffdrive_arduino/DiffDriveArduinoHardware`; params left_wheel_name, right_wheel_name, loop_rate, device, baud_rate, timeout_ms, enc_counts_per_rev, pid_p/d/i/o; commands `e\r` → "L R\r\n", `m L R\r` (counts per loop = rad/s ÷ rad_per_count ÷ loop_rate), `u p:d:i:o\r`. Needs libserial-dev.
+
+## BCI (M2)
+- **Default intent thresholds θ = 0.40, δ = 0.08, N = 3 (refractory 2 s)**: chosen from `outputs/metrics/bci_tradeoff.png` (synthetic, SNR 0.8 and 1.5): N ≥ 3 (anti-Midas-touch), ≤ 0.2 false activations/min at both SNRs, ≤ 3 s latency, then max accuracy → 97 % trials selected, 0.00 false/min, median latency 2.7 s. The brief's 0.35/4 gave 1.3 false/min at SNR 1.5.
+- **A fixed θ cannot fit every user's SNR**: per-user calibration (Section 9) refits θ/δ/N from 10 s per marker + 20 s rest and is required (health gate) for real EEG.
+- **Synthetic EEG SNR is defined as SSVEP fundamental amplitude = 2.5 µV × snr** over a ~6 µV pink background + alpha + 60 Hz + artifacts; CCA is at chance at snr 0 and ≥ 99 % per-window at snr 3 (tested).
+- **Repeat selections of the attended marker are allowed after the 2 s refractory**: the FSM deduplicates them (current goal/queue), so continued looking is harmless.
+- **Engagement gate default `soft`**: z > 1 lowers θ by 0.05, z < −1 raises it; `required` blocks selections below z_required.
+
+## Control (M2)
+- **Collision-monitor zones cover the front half of the footprint only** (shared function `monitor_polygon`, also written into the Nav2 collision_monitor params): a full ring deadlocks the robot beside walls/aisles and around the walker user.
+- **Walker admittance publishes `cmd_vel_admittance` only in ASSIST (idle)**; in ENGAGED, handle forces act through a pull-back scale factor on the nav command (≥12 N back → slow, ≥30 N → stop) so light walking forces never preempt navigation, but pulling back always wins.
+- **twist_mux gets a third lock, `lock/health`** (priority 253): the gated startup (Section 24.4) holds motion locked until all health gates are green.
