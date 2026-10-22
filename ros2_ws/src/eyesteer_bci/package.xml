@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>eyesteer_bci</name>
+  <version>1.0.0</version>
+  <description>SSVEP decoding from LSL (Muse + Oz), Muse LSL emulator, calibration service</description>
+  <maintainer email="minu.adefris@gmail.com">eyesteer</maintainer>
+  <license>MIT</license>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>eyesteer_interfaces</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-scipy</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>

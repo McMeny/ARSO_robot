@@ -105,19 +105,53 @@ class CollisionMonitor:
         return {"OK": 1.0, "SLOWDOWN": self.slow_ratio, "STOP": 0.0}[new], new
 
 
-def monitor_polygon(fp: dict, margin: float) -> list:
-    """Collision-monitor zone: the FRONT half of the footprint grown by `margin` (base frame).
+class RotationGuard:
+    """In-place rotation sweeps the whole footprint (the walker's user swings behind it), but the
+    collision-monitor zones only look ahead and the rear LiDAR sector is occluded by the user. So a
+    short memory of LiDAR points (world frame) is checked against the full footprint grown by `margin`
+    before an in-place turn is allowed."""
+
+    def __init__(self, fp: Footprint, margin: float = 0.1, memory_s: float = 2.0):
+        self.poly = fp.grown(margin)
+        self.memory_s = memory_s
+        self.mem: list = []
+
+    def add_scan(self, t: float, pts_world: np.ndarray):
+        self.mem.append((t, pts_world))
+        self.mem = [(tt, p) for tt, p in self.mem if t - tt <= self.memory_s]
+
+    def blocked(self, x: float, y: float, yaw: float, extra_pts: np.ndarray | None = None) -> bool:
+        pts = [p for _, p in self.mem if len(p)]
+        if extra_pts is not None and len(extra_pts):
+            pts.append(extra_pts)
+        if not pts:
+            return False
+        P = np.concatenate(pts)
+        c, s = math.cos(yaw), math.sin(yaw)
+        dx, dy = P[:, 0] - x, P[:, 1] - y
+        local = np.stack([c * dx + s * dy, -s * dx + c * dy], 1)
+        return int(point_in_poly(local, self.poly).sum()) >= 2
+
+
+def monitor_polygon(fp: dict, margin: float, side_margin: float | None = None) -> list:
+    """Collision-monitor zone in the base frame: the FRONT half of the footprint, extended `margin`
+    ahead and `side_margin` (default margin / 4) to the sides.
 
     Front-only so an obstacle beside/behind the robot (wall in an aisle, the walker user) can never
-    deadlock it; the same polygon is written into the Nav2 collision_monitor params.
+    deadlock it; narrow at the sides so aisle walls do not throttle the robot. The same polygon is
+    written into the Nav2 collision_monitor params.
     """
+    side = margin / 4 if side_margin is None else side_margin
     if fp["type"] == "circle":
-        r = fp["radius"] + margin
-        pts = [[0.0, -r]] + [[r * math.cos(a), r * math.sin(a)] for a in np.linspace(-math.pi / 2, math.pi / 2, 9)[1:-1]] + [[0.0, r]]
+        r = fp["radius"]
+        pts = [[0.0, -(r + side)]]
+        for a in np.linspace(-math.pi / 2, math.pi / 2, 9)[1:-1]:
+            pts.append([(r + margin) * math.cos(a), (r + side) * math.sin(a)])
+        pts.append([0.0, r + side])
         return [[round(x, 3), round(y, 3)] for x, y in pts]
     poly = np.array(fp["polygon"], float)
     front = poly[:, 0].max() + margin
     xc = (poly[:, 0].max() + poly[:, 0].min()) / 2
-    half = np.abs(poly[:, 1]).max() + margin
+    half = np.abs(poly[:, 1]).max() + side
     return [[round(front, 3), round(half, 3)], [round(xc, 3), round(half, 3)],
             [round(xc, 3), round(-half, 3)], [round(front, 3), round(-half, 3)]]

@@ -1,0 +1,23 @@
+# S3: 90 s of looking around, brief glances, blinks, fluctuating engagement -> zero/near-zero false selections
+name: field_no_control
+id: S3
+title: "S3 · No-control state: looking is not commanding"
+world: field
+robot: field_robot
+duration: 95
+seed: 5
+snr: 1.0
+camera: chase
+start_pose: [-3.6, -3.6, 0.785]
+events:
+  - {t: 0, caption: "90 s of natural behaviour: looking around, brief glances at markers, blinks, varying engagement."}
+  - {t: 2, look_around: true, dur: 90, max_glance: 0.9}
+  - {t: 45, caption: "Glances shorter than the dwell never fire; the robot keeps wandering (NO-CONTROL)."}
+stills:
+  - {t: 40.0, name: lookaround, caption: "No-control: ρ bars flicker during glances but stay below threshold or never dwell."}
+expect:
+  selections: []
+  states_exclude: [ENGAGED]
+  final_state: WANDER
+  max_false_selections: 0
+  collisions: 0

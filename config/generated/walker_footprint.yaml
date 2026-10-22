@@ -13,6 +13,6 @@ polygon:
 radius: 0.7256
 padding: 0.02
 inscribed_radius: 0.36
-inflation_radius: 0.55
-cost_scaling_factor: 4.0
+inflation_radius: 0.95
+cost_scaling_factor: 2.5
 footprint_string: '[[0.6,0.36],[-0.63,0.36],[-0.63,-0.36],[0.6,-0.36]]'

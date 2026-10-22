@@ -90,7 +90,7 @@
       "padding": 0.02
     },
     "nav": {
-      "inflation_radius": 0.45,
+      "inflation_radius": 0.7,
       "cost_scaling_factor": 3.0,
       "goal_xy_tolerance": 0.3,
       "goal_yaw_tolerance_deg": 20,

@@ -1,0 +1,30 @@
+# S2: navigating to A, the user attends D -> queued (badge 1) -> A -> D -> WANDER; a short glance at E does not trigger
+name: field_queue
+id: S2
+title: "S2 · Field robot: queueing a second goal while navigating"
+world: field
+robot: field_robot
+duration: 84
+seed: 4
+snr: 1.0
+camera: chase
+start_pose: [0.0, -3.6, 1.571]
+events:
+  - {t: 0, caption: "Robot wandering. The user looks at marker A…"}
+  - {t: 4, gaze: 1, dur: 3.5, engagement: 1.0}
+  - {t: 8, caption: "A selected → ENGAGED → A."}
+  - {t: 15, gaze: 4, dur: 3.5, engagement: 1.0, caption: "While driving to A the user looks at D → D is QUEUED (badge 1)."}
+  - {t: 24, glance: 5, dur: 0.6, caption: "A brief glance at E (0.6 s, shorter than the dwell) → no selection (no Midas touch)."}
+  - {t: 30, caption: "Still heading to A around the obstacles; queue = [D]."}
+  - {t: 59, caption: "Arrived at A → the queued goal D starts after the 1.5 s hold."}
+  - {t: 76, caption: "Arrived at D, queue empty, grace passes → WANDER."}
+stills:
+  - {t: 19.5, name: queued, caption: "ENGAGED → A with D queued (numbered badge 1 on D)."}
+  - {t: 25.0, name: glance, caption: "Short glance at E: ρ(E) spikes but the dwell never completes → no selection."}
+expect:
+  selections: [1, 4]
+  visited: [1, 4]
+  states_include: [ENGAGED, ARRIVED, WANDER]
+  final_state: WANDER
+  max_false_selections: 0
+  collisions: 0

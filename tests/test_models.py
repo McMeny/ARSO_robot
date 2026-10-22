@@ -23,7 +23,7 @@ def urdf_tree(text):
 
 @pytest.mark.parametrize("name", ROBOTS)
 def test_urdf_connected_rooted(name):
-    _, links, joints = urdf_tree((DESC / f"{name}.urdf").read_text())
+    _, links, joints = urdf_tree((DESC / f"{name}.urdf").read_text(encoding="utf-8"))
     children = {j.find("child").get("link") for j in joints.values()}
     parents = {j.find("parent").get("link") for j in joints.values()}
     roots = links - children
@@ -37,8 +37,8 @@ def test_urdf_connected_rooted(name):
 
 @pytest.mark.parametrize("name", ROBOTS)
 def test_wheel_joints_continuous_and_match_controllers(name):
-    _, _, joints = urdf_tree((DESC / f"{name}.urdf").read_text())
-    ctrl = yaml.safe_load((ROOT / f"ros2_ws/src/eyesteer_bringup/config/generated/{name}_controllers.yaml").read_text())
+    _, _, joints = urdf_tree((DESC / f"{name}.urdf").read_text(encoding="utf-8"))
+    ctrl = yaml.safe_load((ROOT / f"ros2_ws/src/eyesteer_bringup/config/generated/{name}_controllers.yaml").read_text(encoding="utf-8"))
     p = ctrl["diff_cont"]["ros__parameters"]
     for j in p["left_wheel_names"] + p["right_wheel_names"]:
         assert joints[j].get("type") == "continuous"
@@ -49,7 +49,7 @@ def test_wheel_joints_continuous_and_match_controllers(name):
 
 @pytest.mark.parametrize("name", ROBOTS)
 def test_inertias_valid(name):
-    root, _, _ = urdf_tree((DESC / f"{name}.urdf").read_text())
+    root, _, _ = urdf_tree((DESC / f"{name}.urdf").read_text(encoding="utf-8"))
     for inert in root.iter("inertia"):
         ixx, iyy, izz = (float(inert.get(k)) for k in ("ixx", "iyy", "izz"))
         assert ixx > 0 and iyy > 0 and izz > 0
@@ -60,13 +60,13 @@ def test_inertias_valid(name):
 
 @pytest.mark.parametrize("name", ROBOTS)
 def test_real_urdf_has_diffdrive_arduino(name):
-    text = (DESC / f"{name}_real.urdf").read_text()
+    text = (DESC / f"{name}_real.urdf").read_text(encoding="utf-8")
     assert "diffdrive_arduino/DiffDriveArduinoHardware" in text
     hw = load_hw()
     assert f'<param name="loop_rate">{hw["mcu"]["pid_rate_hz"]}</param>' in text
     assert f'<param name="enc_counts_per_rev">{hw["encoders"]["counts_per_rev"]}</param>' in text
-    assert "ros2_control" not in (DESC / f"{name}.urdf").read_text()
-    xacro = (DESC / f"{name}.urdf.xacro").read_text()
+    assert "ros2_control" not in (DESC / f"{name}.urdf").read_text(encoding="utf-8")
+    xacro = (DESC / f"{name}.urdf.xacro").read_text(encoding="utf-8")
     assert "$(arg backend)" in xacro
 
 
@@ -90,7 +90,7 @@ def test_xacro_and_plain_agree(name):
 
 
 def _mj_urdf(name):
-    text = (DESC / f"{name}.urdf").read_text()
+    text = (DESC / f"{name}.urdf").read_text(encoding="utf-8")
     text = text.replace(f'<robot name="{name}">',
                         f'<robot name="{name}"><mujoco><compiler fusestatic="false" discardvisual="true" balanceinertia="true"/></mujoco>', 1)
     m = mujoco.MjModel.from_xml_string(text)
@@ -138,6 +138,6 @@ def test_equal_positive_wheel_commands_move_plus_x(name):
 
 def test_firmware_header_generated():
     for n in ROBOTS:
-        h = (ROOT / f"firmware/include/robot_constants_{n}.h").read_text()
+        h = (ROOT / f"firmware/include/robot_constants_{n}.h").read_text(encoding="utf-8")
         assert "#define WATCHDOG_MS 200" in h
         assert "#define PID_RATE_HZ" in h and "EYESTEER_BOARD_MEGA2560" in h

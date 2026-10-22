@@ -1,0 +1,65 @@
+{
+  "scenario": "field_overrides",
+  "robot": "field_robot",
+  "world": "field",
+  "duration_s": 63.24,
+  "eeg": "SIMULATED",
+  "selections": [
+    {
+      "t": 6.12,
+      "id": 2,
+      "label": "B",
+      "correct": true
+    },
+    {
+      "t": 27.27,
+      "id": 6,
+      "label": "CANCEL",
+      "correct": true
+    }
+  ],
+  "correct_selections": 2,
+  "false_selections": 0,
+  "false_per_min_lookaround": null,
+  "detection_latency_s": [
+    3.12,
+    2.268
+  ],
+  "arrivals": [],
+  "path_length_m": 13.61,
+  "min_clearance_m": 0.476,
+  "collisions": 0,
+  "contact_frames": 0,
+  "collision_monitor_activations": 0,
+  "mux_share": {
+    "LOCK:ESTOP": 0.158,
+    "NAVIGATION": 0.771,
+    "TELEOP": 0.071
+  },
+  "states_seen": [
+    "WANDER",
+    "ENGAGED",
+    "WANDER",
+    "ESTOP",
+    "WANDER"
+  ],
+  "final_state": "WANDER",
+  "odom_drift_m": 0.5672,
+  "odom_drift_per_m": 0.04169,
+  "nav_failures": 0,
+  "video": "C:\\Users\\minua\\Downloads\\Robotics\\ARSO_robot\\outputs\\videos\\S4_field_overrides.mp4",
+  "stills": [
+    {
+      "file": "outputs\\stills\\S4_field_overrides_teleop.png",
+      "t": 16.0,
+      "caption": "Teleop override: mux source TELEOP while the goal B stays active."
+    },
+    {
+      "file": "outputs\\stills\\S4_field_overrides_estop.png",
+      "t": 43.0,
+      "caption": "E-stop latched: lock active, zero velocity."
+    }
+  ],
+  "expectation_failures": [],
+  "passed": true
+}

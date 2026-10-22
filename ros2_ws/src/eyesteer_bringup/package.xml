@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>eyesteer_bringup</name>
+  <version>1.0.0</version>
+  <description>Launch files and parameters: sim (MuJoCo / HIL) and real robot, SLAM, Nav2, twist_mux, collision monitor</description>
+  <maintainer email="minu.adefris@gmail.com">eyesteer</maintainer>
+  <license>MIT</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <exec_depend>eyesteer_description</exec_depend>
+  <exec_depend>eyesteer_interfaces</exec_depend>
+  <exec_depend>eyesteer_mujoco</exec_depend>
+  <exec_depend>eyesteer_bci</exec_depend>
+  <exec_depend>eyesteer_behavior</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>nav2_bringup</exec_depend>
+  <exec_depend>nav2_collision_monitor</exec_depend>
+  <exec_depend>slam_toolbox</exec_depend>
+  <exec_depend>twist_mux</exec_depend>
+  <exec_depend>rosbridge_server</exec_depend>
+  <exec_depend>controller_manager</exec_depend>
+  <exec_depend>diff_drive_controller</exec_depend>
+  <exec_depend>joint_state_broadcaster</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <test_depend>launch_testing_ament_cmake</test_depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>

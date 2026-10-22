@@ -1,0 +1,83 @@
+{
+  "scenario": "field_queue",
+  "robot": "field_robot",
+  "world": "field",
+  "duration_s": 85.68,
+  "eeg": "SIMULATED",
+  "selections": [
+    {
+      "t": 6.36,
+      "id": 1,
+      "label": "A",
+      "correct": true
+    },
+    {
+      "t": 8.4,
+      "id": 1,
+      "label": "A",
+      "correct": true
+    },
+    {
+      "t": 18.36,
+      "id": 4,
+      "label": "D",
+      "correct": true
+    }
+  ],
+  "correct_selections": 3,
+  "false_selections": 0,
+  "false_per_min_lookaround": null,
+  "detection_latency_s": [
+    2.358,
+    3.36
+  ],
+  "arrivals": [
+    {
+      "t": 58.79,
+      "id": 1,
+      "label": "A",
+      "time_to_goal_s": 52.43
+    },
+    {
+      "t": 75.45,
+      "id": 4,
+      "label": "D",
+      "time_to_goal_s": 15.13
+    }
+  ],
+  "path_length_m": 22.54,
+  "min_clearance_m": 0.028,
+  "collisions": 0,
+  "contact_frames": 0,
+  "collision_monitor_activations": 26,
+  "mux_share": {
+    "NAVIGATION": 1.0
+  },
+  "states_seen": [
+    "WANDER",
+    "ENGAGED",
+    "ARRIVED",
+    "ENGAGED",
+    "ARRIVED",
+    "WANDER"
+  ],
+  "final_state": "WANDER",
+  "odom_drift_m": 4.3283,
+  "odom_drift_per_m": 0.19202,
+  "nav_failures": 0,
+  "video": "C:\\Users\\minua\\Downloads\\Robotics\\ARSO_robot\\outputs\\videos\\S2_field_queue.mp4",
+  "stills": [
+    {
+      "file": "outputs\\stills\\S2_field_queue_queued.png",
+      "t": 19.5,
+      "caption": "ENGAGED \u2192 A with D queued (numbered badge 1 on D)."
+    },
+    {
+      "file": "outputs\\stills\\S2_field_queue_glance.png",
+      "t": 25.0,
+      "caption": "Short glance at E: \u03c1(E) spikes but the dwell never completes \u2192 no selection."
+    }
+  ],
+  "expectation_failures": [],
+  "passed": true
+}

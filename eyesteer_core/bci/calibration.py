@@ -65,7 +65,7 @@ def save_profile(user: str, profile: dict, profile_dir: str = "~/.eyesteer/profi
 
 def load_profile(user: str, profile_dir: str = "~/.eyesteer/profiles") -> dict | None:
     p = profile_path(user, profile_dir)
-    return yaml.safe_load(p.read_text()) if p.exists() else None
+    return yaml.safe_load(p.read_text(encoding="utf-8")) if p.exists() else None
 
 
 def synthetic_calibration(freqs: dict, fs: int = 256, per_marker_s: float = 10.0, rest_s: float = 20.0,

@@ -60,11 +60,15 @@ footprint:
   padding: 0.02
 
 nav:
-  inflation_radius: 0.55
-  cost_scaling_factor: 4.0
+  inflation_radius: 0.95
+  cost_scaling_factor: 2.5
   goal_xy_tolerance: 0.30
   goal_yaw_tolerance_deg: 20
   approach_distance: 0.8
+  # Runtime-C planner stand-in (Nav2 uses the footprint polygon directly):
+  lethal_margin: 0.15       # planner keeps the axle >= inscribed radius + this from obstacles
+  path_clearance: 0.15      # planned footprint poses keep > collision-monitor stop margin (0.1 m)
+  lookahead: 0.45           # pure pursuit; short so the 0.6 m front overhang does not cut corners
 
 admittance:
   mass: 25.0                # virtual mass [kg]

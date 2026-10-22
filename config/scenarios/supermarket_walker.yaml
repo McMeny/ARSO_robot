@@ -1,0 +1,41 @@
+# S5: the smart walker guides its user to the Beans, then to the Checkout. Idle = ASSIST (never wanders).
+name: supermarket_walker
+id: S5
+title: "S5 · Smart walker: take me to the beans"
+world: supermarket
+robot: walker
+duration: 105
+seed: 7
+snr: 1.0
+camera: chase
+people_delay: {shopper_1: 12.0}
+events:
+  - {t: 0, caption: "Walker at the entrance in ASSIST: it only moves when pushed. The user looks at 'Beans'…"}
+  - {t: 3, gaze: 1, dur: 3.5, engagement: 1.0}
+  - {t: 6.5, caption: "Beans selected → the walker guides the user at walking pace; the footprint includes the user."}
+  - {t: 11, caption: "A shopper crosses the aisle → the collision monitor slows / stops the walker, then guidance resumes."}
+  - {t: 19, pull: -10, dur: 3.5, caption: "The user pulls back on the handles → the walker slows down. The user always wins."}
+  - {t: 24, grip: false, dur: 2.5, caption: "Grip released (dead-man) → full stop within 0.3 s."}
+  - {t: 26.5, caption: "Re-grip → guidance resumes up the aisle."}
+  - {t: 34, camera: user_pov, caption: "Arriving at the Beans (user's view, MR overlay)."}
+  - {t: 39, caption: "Arrived → back to ASSIST: it does NOT wander off with a person attached."}
+  - {t: 43, camera: chase}
+  - {t: 44, gaze: 5, dur: 3.5, engagement: 1.0, caption: "Next the user looks at 'Checkout'…"}
+  - {t: 48, caption: "Checkout selected → guided down the aisle and across the store."}
+  - {t: 92, caption: "Arrived at the checkout → ASSIST."}
+stills:
+  - {t: 2.0, name: assist, caption: "ASSIST at the entrance; markers are virtual MR overlays (not physical objects)."}
+  - {t: 13.5, name: shopper, caption: "Shopper crossing: collision monitor active (user-inclusive footprint)."}
+  - {t: 21.0, name: pullback, caption: "User pulls back: navigation scaled down, the user wins."}
+  - {t: 25.5, name: deadman, caption: "Grip released: dead-man lock, walker stopped."}
+  - {t: 40.0, name: arrived_pov, caption: "User's view at the Beans: MR marker overlay, walker in ASSIST."}
+expect:
+  selections: [1, 5]
+  visited: [1, 5]
+  states_include: [ASSIST, ENGAGED, ARRIVED]
+  states_exclude: [WANDER]
+  final_state: ASSIST
+  sources_seen: ["LOCK:DEADMAN", NAVIGATION]
+  collision_monitor_min: 1
+  max_false_selections: 0
+  collisions: 0

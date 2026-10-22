@@ -99,12 +99,12 @@ def table_hash(table: dict) -> str:
 
 
 def load_rules() -> dict:
-    cfg = yaml.safe_load((ROOT / "config/bci.yaml").read_text())
+    cfg = yaml.safe_load((ROOT / "config/bci.yaml").read_text(encoding="utf-8"))
     return cfg.get("frequency_rules", {})
 
 
 def configured_refresh() -> float:
-    hw = yaml.safe_load((ROOT / "config/hardware.yaml").read_text())
+    hw = yaml.safe_load((ROOT / "config/hardware.yaml").read_text(encoding="utf-8"))
     return float(hw["headset"]["refresh_hz"])
 
 

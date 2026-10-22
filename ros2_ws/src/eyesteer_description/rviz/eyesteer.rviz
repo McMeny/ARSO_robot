@@ -1,0 +1,51 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Reference Frame: <Fixed Frame>
+    - Class: rviz_default_plugins/Map
+      Name: Map
+      Topic: {Value: /map, Durability Policy: Transient Local}
+    - Class: rviz_default_plugins/Map
+      Name: GlobalCostmap
+      Topic: {Value: /global_costmap/costmap}
+      Color Scheme: costmap
+      Alpha: 0.4
+    - Class: rviz_default_plugins/RobotModel
+      Name: RobotModel
+      Description Topic: {Value: /robot_description}
+    - Class: rviz_default_plugins/LaserScan
+      Name: LaserScan
+      Topic: {Value: /scan, Reliability Policy: Best Effort}
+      Size (m): 0.04
+    - Class: rviz_default_plugins/Path
+      Name: Plan
+      Topic: {Value: /plan}
+    - Class: rviz_default_plugins/Polygon
+      Name: CollisionStop
+      Topic: {Value: /polygon_stop}
+    - Class: rviz_default_plugins/Polygon
+      Name: CollisionSlowdown
+      Topic: {Value: /polygon_slowdown}
+    - Class: rviz_default_plugins/MarkerArray
+      Name: MR markers (virtual)
+      Topic: {Value: /markers_viz, Durability Policy: Transient Local}
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: false
+  Global Options:
+    Fixed Frame: map
+  Tools:
+    - Class: rviz_default_plugins/SetInitialPose
+    - Class: rviz_default_plugins/SetGoal
+  Views:
+    Current:
+      Class: rviz_default_plugins/TopDownOrtho
+      Scale: 40
+Window Geometry:
+  Width: 1400
+  Height: 900

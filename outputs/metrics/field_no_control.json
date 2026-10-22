@@ -1,0 +1,38 @@
+{
+  "scenario": "field_no_control",
+  "robot": "field_robot",
+  "world": "field",
+  "duration_s": 96.9,
+  "eeg": "SIMULATED",
+  "selections": [],
+  "correct_selections": 0,
+  "false_selections": 0,
+  "false_per_min_lookaround": 0.0,
+  "detection_latency_s": [],
+  "arrivals": [],
+  "path_length_m": 22.81,
+  "min_clearance_m": 0.151,
+  "collisions": 0,
+  "contact_frames": 0,
+  "collision_monitor_activations": 0,
+  "mux_share": {
+    "NAVIGATION": 1.0
+  },
+  "states_seen": [
+    "WANDER"
+  ],
+  "final_state": "WANDER",
+  "odom_drift_m": 0.5619,
+  "odom_drift_per_m": 0.02463,
+  "nav_failures": 0,
+  "video": "C:\\Users\\minua\\Downloads\\Robotics\\ARSO_robot\\outputs\\videos\\S3_field_no_control.mp4",
+  "stills": [
+    {
+      "file": "outputs\\stills\\S3_field_no_control_lookaround.png",
+      "t": 40.0,
+      "caption": "No-control: \u03c1 bars flicker during glances but stay below threshold or never dwell."
+    }
+  ],
+  "expectation_failures": [],
+  "passed": true
+}

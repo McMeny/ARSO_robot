@@ -1,0 +1,78 @@
+{
+  "scenario": "supermarket_queue",
+  "robot": "walker",
+  "world": "supermarket",
+  "duration_s": 86.7,
+  "eeg": "SIMULATED",
+  "selections": [
+    {
+      "t": 5.61,
+      "id": 2,
+      "label": "Bread",
+      "correct": true
+    },
+    {
+      "t": 16.05,
+      "id": 3,
+      "label": "Milk",
+      "correct": true
+    },
+    {
+      "t": 18.09,
+      "id": 3,
+      "label": "Milk",
+      "correct": true
+    }
+  ],
+  "correct_selections": 3,
+  "false_selections": 0,
+  "false_per_min_lookaround": null,
+  "detection_latency_s": [
+    2.61,
+    2.048
+  ],
+  "arrivals": [
+    {
+      "t": 39.1,
+      "id": 2,
+      "label": "Bread",
+      "time_to_goal_s": 33.49
+    },
+    {
+      "t": 58.68,
+      "id": 3,
+      "label": "Milk",
+      "time_to_goal_s": 18.05
+    }
+  ],
+  "path_length_m": 15.33,
+  "min_clearance_m": 0.157,
+  "collisions": 0,
+  "contact_frames": 0,
+  "collision_monitor_activations": 3,
+  "mux_share": {
+    "NAVIGATION": 1.0
+  },
+  "states_seen": [
+    "ASSIST",
+    "ENGAGED",
+    "ARRIVED",
+    "ENGAGED",
+    "ARRIVED",
+    "ASSIST"
+  ],
+  "final_state": "ASSIST",
+  "odom_drift_m": 0.0932,
+  "odom_drift_per_m": 0.00608,
+  "nav_failures": 0,
+  "video": "C:\\Users\\minua\\Downloads\\Robotics\\ARSO_robot\\outputs\\videos\\S6_supermarket_queue.mp4",
+  "stills": [
+    {
+      "file": "outputs\\stills\\S6_supermarket_queue_queued.png",
+      "t": 19.0,
+      "caption": "ENGAGED \u2192 Bread with Milk queued (badge 1)."
+    }
+  ],
+  "expectation_failures": [],
+  "passed": true
+}

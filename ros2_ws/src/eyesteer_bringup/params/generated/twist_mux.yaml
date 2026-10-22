@@ -1,0 +1,29 @@
+# GENERATED from eyesteer_core/control/mux_rules.py (D8 priorities). Do not edit.
+twist_mux:
+  ros__parameters:
+    topics:
+      admittance:
+        topic: cmd_vel_admittance
+        timeout: 0.3
+        priority: 100
+      teleop:
+        topic: cmd_vel_teleop
+        timeout: 0.5
+        priority: 90
+      navigation:
+        topic: cmd_vel_nav
+        timeout: 0.5
+        priority: 10
+    locks:
+      estop:
+        topic: lock/estop
+        timeout: 0.0
+        priority: 255
+      deadman:
+        topic: lock/deadman
+        timeout: 0.0
+        priority: 254
+      health:
+        topic: lock/health
+        timeout: 0.0
+        priority: 253

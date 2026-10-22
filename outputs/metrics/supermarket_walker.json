@@ -1,0 +1,94 @@
+{
+  "scenario": "supermarket_walker",
+  "robot": "walker",
+  "world": "supermarket",
+  "duration_s": 107.1,
+  "eeg": "SIMULATED",
+  "selections": [
+    {
+      "t": 5.85,
+      "id": 1,
+      "label": "Beans",
+      "correct": true
+    },
+    {
+      "t": 47.43,
+      "id": 5,
+      "label": "Checkout",
+      "correct": true
+    }
+  ],
+  "correct_selections": 2,
+  "false_selections": 0,
+  "false_per_min_lookaround": null,
+  "detection_latency_s": [
+    2.848,
+    3.43
+  ],
+  "arrivals": [
+    {
+      "t": 35.19,
+      "id": 1,
+      "label": "Beans",
+      "time_to_goal_s": 29.34
+    },
+    {
+      "t": 91.77,
+      "id": 5,
+      "label": "Checkout",
+      "time_to_goal_s": 44.34
+    }
+  ],
+  "path_length_m": 18.48,
+  "min_clearance_m": 0.014,
+  "collisions": 0,
+  "contact_frames": 0,
+  "collision_monitor_activations": 7,
+  "mux_share": {
+    "LOCK:DEADMAN": 0.021,
+    "NAVIGATION": 0.979
+  },
+  "states_seen": [
+    "ASSIST",
+    "ENGAGED",
+    "ARRIVED",
+    "ASSIST",
+    "ENGAGED",
+    "ARRIVED",
+    "ASSIST"
+  ],
+  "final_state": "ASSIST",
+  "odom_drift_m": 0.3485,
+  "odom_drift_per_m": 0.01886,
+  "nav_failures": 0,
+  "video": "C:\\Users\\minua\\Downloads\\Robotics\\ARSO_robot\\outputs\\videos\\S5_supermarket_walker.mp4",
+  "stills": [
+    {
+      "file": "outputs\\stills\\S5_supermarket_walker_assist.png",
+      "t": 2.0,
+      "caption": "ASSIST at the entrance; markers are virtual MR overlays (not physical objects)."
+    },
+    {
+      "file": "outputs\\stills\\S5_supermarket_walker_shopper.png",
+      "t": 13.5,
+      "caption": "Shopper crossing: collision monitor active (user-inclusive footprint)."
+    },
+    {
+      "file": "outputs\\stills\\S5_supermarket_walker_pullback.png",
+      "t": 21.0,
+      "caption": "User pulls back: navigation scaled down, the user wins."
+    },
+    {
+      "file": "outputs\\stills\\S5_supermarket_walker_deadman.png",
+      "t": 25.5,
+      "caption": "Grip released: dead-man lock, walker stopped."
+    },
+    {
+      "file": "outputs\\stills\\S5_supermarket_walker_arrived_pov.png",
+      "t": 40.0,
+      "caption": "User's view at the Beans: MR marker overlay, walker in ASSIST."
+    }
+  ],
+  "expectation_failures": [],
+  "passed": true
+}

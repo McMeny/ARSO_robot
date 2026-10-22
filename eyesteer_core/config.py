@@ -14,7 +14,7 @@ ROBOT_FILE = {"field_robot": "robot_field.yaml", "walker": "robot_walker.yaml"}
 
 
 def _load(p: Path) -> dict:
-    return yaml.safe_load(Path(p).read_text())
+    return yaml.safe_load(Path(p).read_text(encoding="utf-8"))
 
 
 @lru_cache(maxsize=None)
@@ -35,14 +35,14 @@ def robot(name: str) -> dict:
 @lru_cache(maxsize=None)
 def geometry(name: str) -> dict:
     """Generated geometry (footprint polygon etc.), see tools/generate_models.py."""
-    return json.loads((CONFIG / "generated" / f"{name}_geometry.json").read_text())
+    return json.loads((CONFIG / "generated" / f"{name}_geometry.json").read_text(encoding="utf-8"))
 
 
 def frequency_table(refresh_hz: float | None = None) -> dict:
     """The served frequency table (config/generated/frequencies.json) or a recomputation."""
     p = CONFIG / "generated" / "frequencies.json"
     if refresh_hz is None and p.exists():
-        return json.loads(p.read_text())
+        return json.loads(p.read_text(encoding="utf-8"))
     from eyesteer_core.world import load_frequency_table
     return load_frequency_table(refresh_hz)
 

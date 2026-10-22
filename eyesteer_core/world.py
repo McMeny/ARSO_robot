@@ -45,7 +45,7 @@ class World:
 
 
 def load_yaml(p: Path) -> dict:
-    return yaml.safe_load(Path(p).read_text())
+    return yaml.safe_load(Path(p).read_text(encoding="utf-8"))
 
 
 def load_world(name: str) -> World:

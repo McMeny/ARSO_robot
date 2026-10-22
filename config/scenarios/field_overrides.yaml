@@ -1,0 +1,30 @@
+# S4: engaged -> teleop takes over -> release -> resumes -> CANCEL -> WANDER -> e-stop -> everything stops -> reset
+name: field_overrides
+id: S4
+title: "S4 · Human overrides: teleop, CANCEL, e-stop"
+world: field
+robot: field_robot
+duration: 62
+seed: 6
+snr: 1.0
+camera: chase
+start_pose: [-3.6, -3.6, 0.785]
+events:
+  - {t: 0, caption: "The user selects B; the robot is ENGAGED."}
+  - {t: 3, gaze: 2, dur: 3.5, engagement: 1.0}
+  - {t: 14, teleop: [0.15, 0.9], dur: 4, caption: "Teleop takes over (mux source = TELEOP): the human always wins over the BCI."}
+  - {t: 18, caption: "Teleop released → navigation resumes towards B."}
+  - {t: 25, gaze: 6, dur: 3.5, engagement: 1.0, caption: "The user looks at CANCEL → goal and queue cleared → WANDER."}
+  - {t: 40, estop: true, caption: "E-STOP pressed: lock → zero velocity, latched."}
+  - {t: 46, estop_release: true, caption: "E-stop button released, but the state stays latched until an explicit reset."}
+  - {t: 50, reset: true, caption: "Operator reset → WANDER."}
+stills:
+  - {t: 16.0, name: teleop, caption: "Teleop override: mux source TELEOP while the goal B stays active."}
+  - {t: 43.0, name: estop, caption: "E-stop latched: lock active, zero velocity."}
+expect:
+  selections: [2, 6]
+  states_include: [ENGAGED, WANDER, ESTOP]
+  final_state: WANDER
+  sources_seen: [TELEOP, "LOCK:ESTOP", NAVIGATION]
+  max_false_selections: 0
+  collisions: 0

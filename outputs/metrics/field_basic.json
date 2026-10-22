@@ -1,0 +1,62 @@
+{
+  "scenario": "field_basic",
+  "robot": "field_robot",
+  "world": "field",
+  "duration_s": 61.2,
+  "eeg": "SIMULATED",
+  "selections": [
+    {
+      "t": 10.95,
+      "id": 3,
+      "label": "C",
+      "correct": true
+    }
+  ],
+  "correct_selections": 1,
+  "false_selections": 0,
+  "false_per_min_lookaround": null,
+  "detection_latency_s": [
+    1.948
+  ],
+  "arrivals": [
+    {
+      "t": 33.69,
+      "id": 3,
+      "label": "C",
+      "time_to_goal_s": 22.75
+    }
+  ],
+  "path_length_m": 16.55,
+  "min_clearance_m": 0.141,
+  "collisions": 0,
+  "contact_frames": 0,
+  "collision_monitor_activations": 3,
+  "mux_share": {
+    "NAVIGATION": 1.0
+  },
+  "states_seen": [
+    "WANDER",
+    "ENGAGED",
+    "ARRIVED",
+    "WANDER"
+  ],
+  "final_state": "WANDER",
+  "odom_drift_m": 2.1066,
+  "odom_drift_per_m": 0.12728,
+  "nav_failures": 0,
+  "video": "C:\\Users\\minua\\Downloads\\Robotics\\ARSO_robot\\outputs\\videos\\S1_field_basic.mp4",
+  "stills": [
+    {
+      "file": "outputs\\stills\\S1_field_basic_attending.png",
+      "t": 10.4,
+      "caption": "User attends marker C; CCA \u03c1 for C rises above threshold, dwell filling."
+    },
+    {
+      "file": "outputs\\stills\\S1_field_basic_engaged.png",
+      "t": 20.0,
+      "caption": "ENGAGED \u2192 C: planned path around obstacles, LiDAR hits in blue."
+    }
+  ],
+  "expectation_failures": [],
+  "passed": true
+}

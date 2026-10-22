@@ -1,0 +1,27 @@
+# S1: wander -> attend C ~3 s -> selection -> ENGAGED -> reach C avoiding obstacles -> ARRIVED -> grace -> WANDER
+name: field_basic
+id: S1
+title: "S1 · Field robot: look at C, the robot goes there"
+world: field
+robot: field_robot
+duration: 60
+seed: 3
+snr: 1.0
+camera: chase
+start_pose: [-3.6, -3.6, 0.785]
+events:
+  - {t: 0, caption: "Autonomous state: the robot wanders the field and avoids obstacles on its own."}
+  - {t: 9, gaze: 3, dur: 3.5, engagement: 1.2, caption: "The user looks at virtual marker C (8.18 Hz in the headset)…"}
+  - {t: 12.5, caption: "SSVEP detected at Oz → C selected. ENGAGED: Nav2-style planner drives to C."}
+  - {t: 34, caption: "Arrived at C. Hold 1.5 s, grace window 2 s for further engagement…"}
+  - {t: 40, caption: "No further engagement → back to WANDER."}
+stills:
+  - {t: 10.4, name: attending, caption: "User attends marker C; CCA ρ for C rises above threshold, dwell filling."}
+  - {t: 20.0, name: engaged, caption: "ENGAGED → C: planned path around obstacles, LiDAR hits in blue."}
+expect:
+  selections: [3]
+  visited: [3]
+  states_include: [WANDER, ENGAGED, ARRIVED]
+  final_state: WANDER
+  max_false_selections: 0
+  collisions: 0

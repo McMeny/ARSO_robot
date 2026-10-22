@@ -1,0 +1,9 @@
+# Two-point co-location: headset-frame positions of the robot's front and rear decals
+# (WebXR local-floor: x right, y up, z back). anchor_bridge combines them with the robot's map pose.
+geometry_msgs/Point front
+geometry_msgs/Point rear
+string session
+---
+bool success
+string message
+eyesteer_interfaces/HeadsetCalibration calibration

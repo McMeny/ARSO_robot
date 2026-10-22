@@ -83,7 +83,7 @@ def build_scene(world_name: str, robot_name: str, marker_set: str | None = None)
     # chase camera: tracks the robot (mode=trackcom) with a fixed world-frame offset from the south-west,
     # so it never ends up behind a wall. MuJoCo interprets pos/xyaxes in the body frame at load, so
     # rotate the desired world offset by -start_yaw.
-    dist = 4.2 if robot_name == "walker" else 3.0
+    dist = 4.2 if robot_name == "walker" else 6.0
     off_w = (-0.25 * dist, -0.55 * dist, 1.0 * dist)
     c, s_ = math.cos(-syaw), math.sin(-syaw)
     rot = lambda v: (c * v[0] - s_ * v[1], s_ * v[0] + c * v[1], v[2])

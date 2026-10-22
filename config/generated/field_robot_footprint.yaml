@@ -3,5 +3,5 @@ robot: field_robot
 type: circle
 radius: 0.17
 padding: 0.02
-inflation_radius: 0.45
+inflation_radius: 0.7
 cost_scaling_factor: 3.0

@@ -134,11 +134,14 @@
       "padding": 0.02
     },
     "nav": {
-      "inflation_radius": 0.55,
-      "cost_scaling_factor": 4.0,
+      "inflation_radius": 0.95,
+      "cost_scaling_factor": 2.5,
       "goal_xy_tolerance": 0.3,
       "goal_yaw_tolerance_deg": 20,
-      "approach_distance": 0.8
+      "approach_distance": 0.8,
+      "lethal_margin": 0.15,
+      "path_clearance": 0.15,
+      "lookahead": 0.45
     },
     "admittance": {
       "mass": 25.0,

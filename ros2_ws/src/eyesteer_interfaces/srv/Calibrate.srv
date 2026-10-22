@@ -1,0 +1,10 @@
+# Per-user SSVEP calibration (10 s per marker + 20 s rest). synthetic=true runs the sim version.
+string user
+bool synthetic
+---
+bool success
+string message
+float32 rho_threshold
+float32 margin_threshold
+int32 dwell_windows
+float32 window_accuracy

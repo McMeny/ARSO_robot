@@ -1,0 +1,28 @@
+# S6: Bread selected, Milk queued during navigation -> both visited in order -> ASSIST
+name: supermarket_queue
+id: S6
+title: "S6 · Walker: Bread, then Milk (queued)"
+world: supermarket
+robot: walker
+duration: 85
+seed: 8
+snr: 1.0
+camera: chase
+disable_people: [shopper_1]
+events:
+  - {t: 0, caption: "ASSIST at the entrance. The user looks at 'Bread'…"}
+  - {t: 3, gaze: 2, dur: 3.5, engagement: 1.0}
+  - {t: 7, caption: "Bread selected → guiding."}
+  - {t: 14, gaze: 3, dur: 3.5, engagement: 1.0, caption: "On the way the user looks at 'Milk' → queued (badge 1)."}
+  - {t: 40, caption: "Bread reached → Milk starts after the hold."}
+  - {t: 62, caption: "Milk reached, queue empty → ASSIST."}
+stills:
+  - {t: 19.0, name: queued, caption: "ENGAGED → Bread with Milk queued (badge 1)."}
+expect:
+  selections: [2, 3]
+  visited: [2, 3]
+  states_include: [ASSIST, ENGAGED, ARRIVED]
+  states_exclude: [WANDER]
+  final_state: ASSIST
+  max_false_selections: 0
+  collisions: 0
