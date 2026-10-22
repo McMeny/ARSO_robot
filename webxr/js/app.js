@@ -14,7 +14,7 @@ const S = {
   markers: [], status: null, bci: null, health: null, pose: null, poseIsTruth: false,
   cal: null, consent: false, mode: "run", xrSession: null, aimed: 0, cue: null,
   timing: new FrameTiming(), frame: 0, blocked: false, connected: false, placed: [], calPoints: [],
-  selections: [], flickerMode: "square", latency: [], aimLog: [],
+  selections: [], flickerMode: "square", latency: [], aimLog: [], offsets: [],
 };
 
 // ------------------------------------------------------------------ boot
@@ -46,7 +46,14 @@ async function boot() {
     onPose: (p, truth) => { if (truth || !S.poseIsTruth) { S.pose = p; S.poseIsTruth = !!truth; } },
     onSelection: (m) => { S.selections.push({ id: m.marker_id, label: m.label, t: Date.now() }); },
     onPeople: (p) => { S.people = p.map((q) => [q.position.x, q.position.y, q.position.z]); },
-    onLatency: (e) => { S.latency.push({ ...e, rx: Date.now() / 1000 }); if (S.latency.length > 500) S.latency.shift(); },
+    onLatency: (e) => {
+      if (e.event === "pong") {               // NTP-style offset: robot wall clock - page clock
+        const t1 = Date.now() / 1000, t0 = parseFloat(e.ping);
+        S.offsets.push({ off: e.wall - (t0 + t1) / 2, rtt: t1 - t0 });
+        if (S.offsets.length > 20) S.offsets.shift();
+        return;
+      }
+      S.latency.push({ ...e, rx: Date.now() / 1000 }); if (S.latency.length > 500) S.latency.shift(); },
   });
   $("consent-ok").onclick = () => { S.consent = true; $("consent").classList.add("hidden"); };
   $("warning-dismiss").onclick = () => $("warning").classList.add("hidden");
@@ -58,6 +65,7 @@ async function boot() {
   setMode("run");
   setInterval(publishTiming, 500);
   setInterval(publishGaze, 100);
+  setInterval(() => S.ros.pub("/eyesteer/ping", "std_msgs/String", { data: String(Date.now() / 1000) }), 2000);
   requestAnimationFrame(previewLoop);
 }
 
@@ -442,12 +450,19 @@ async function startXr() {
   });
 }
 
+// robot-clock minus page-clock, from the pings with the smallest round trip
+function clockOffset() {
+  if (!S.offsets.length) return null;
+  const best = [...S.offsets].sort((a, b) => a.rtt - b.rtt).slice(0, 5);
+  return best.reduce((a, b) => a + b.off, 0) / best.length;
+}
+
 // ------------------------------------------------------------------ test hooks (Playwright headless headset client)
 window.eyesteer = {
   state: () => ({ blocked: S.blocked, connected: S.connected, consent: S.consent, mode: S.mode, markers: S.markers, status: S.status,
                   bci: S.bci, health: S.health, cal: S.cal, aimed: S.aimed, frame: S.frame, selections: S.selections,
                   tableHash: S.table && S.table.hash, refresh: S.timing.snappedHz(), latency: S.latency, aimLog: S.aimLog,
-                  pose: S.pose, people: S.people || [] }),
+                  pose: S.pose, people: S.people || [], clockOffset: clockOffset() }),
   pub: (topic, type, msg) => S.ros.pub(topic, type, msg),
   placeHeadsetFrame: (list) => {     // markers given in map coordinates, sent as the headset would: in its own frame
     const hs = list.map((m) => { const h = mapToHeadset([m.x, m.y, m.z], S.cal); return { ...m, x: h[0], y: h[1], z: h[2],

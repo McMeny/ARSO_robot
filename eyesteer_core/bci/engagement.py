@@ -55,11 +55,11 @@ def gate_allows(mode: str, z: float, z_required: float = 0.0) -> bool:
 
 
 def gate_threshold(mode: str, base_threshold: float, z: float, bonus: float = 0.05) -> float:
-    """'soft' gate: a clearly engaged user needs slightly less evidence, a disengaged one more."""
+    """'soft' gate: a clearly DISengaged user needs more evidence. One-sided on purpose: lowering the
+    threshold for engaged users produced wrong selections at gaze onset (engagement rises exactly while
+    the 2 s window still holds a half-formed SSVEP): 2/150 wrong onsets vs 0/150 one-sided."""
     if mode != "soft":
         return base_threshold
-    if z > 1.0:
-        return base_threshold - bonus
     if z < -1.0:
         return base_threshold + bonus
     return base_threshold

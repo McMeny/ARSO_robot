@@ -6,6 +6,7 @@ behaviours, BT navigator, collision monitor) -> twist_mux -> safety chain -> /cm
   BCI (Muse LSL emulator unless eeg:=lsl, ssvep_node), rosbridge (wss) + HTTPS web server.
 """
 import os
+import time
 
 import yaml
 from ament_index_python.packages import get_package_share_directory
@@ -128,7 +129,7 @@ def setup(context):
     if a["record"] == "true":
         out = os.path.join(root, "outputs", "logs", "rosbag")
         nodes.append(ExecuteProcess(cmd=["ros2", "bag", "record", "-a", "-x", "/(clock|map_updates|.*costmap.*)", "-o",
-                                         os.path.join(out, f"{robot}_{world}")], output="screen"))
+                                         os.path.join(out, f"{robot}_{world}_{time.strftime('%Y%m%d_%H%M%S')}")], output="screen"))
         nodes.append(Node(package="eyesteer_bci", executable="lsl_recorder", additional_env=env, output="screen",
                           parameters=[{"out": os.path.join(root, "outputs", "logs", f"eeg_{robot}_{world}.xdf")}]))
     return nodes

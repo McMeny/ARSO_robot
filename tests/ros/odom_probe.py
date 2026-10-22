@@ -8,6 +8,7 @@ import rclpy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
+from std_msgs.msg import String
 
 from eyesteer_interfaces.msg import SystemHealth
 
@@ -26,6 +27,7 @@ class Probe(Node):
         self.create_subscription(Odometry, "/sim/ground_truth", lambda m: setattr(self, "gt", m), 10)
         self.create_subscription(SystemHealth, "/system/health", lambda m: setattr(self, "unlocked", m.motion_unlocked), 10)
         self.pub = self.create_publisher(Twist, "/cmd_vel_teleop", 10)
+        self.pub_people = self.create_publisher(String, "/sim/people_cmd", 10)
 
     def on_odom(self, m):
         self.odom = m
@@ -50,6 +52,9 @@ def main():
     while not (p.unlocked and p.odom and p.gt) and time.time() - t0 < 120:
         rclpy.spin_once(p, timeout_sec=0.2)
     print(f"unlocked={p.unlocked} odom msgs={p.n_odom}")
+    for _ in range(3):   # keep the moving people out of the way of this odometry check
+        p.pub_people.publish(String(data='{"disable": ["shopper_1", "shopper_2", "person_1", "person_2"]}'))
+        p.spin_for(0.2)
     n0 = p.n_odom
     p.spin_for(2.0)
     print(f"/odom rate ~ {(p.n_odom - n0) / 2.0:.1f} Hz")

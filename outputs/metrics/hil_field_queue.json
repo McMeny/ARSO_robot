@@ -1,0 +1,62 @@
+{
+  "scenario": "field_queue",
+  "runtime": "ros_hil",
+  "robot": "field_robot",
+  "world": "field",
+  "duration_s": 110.0,
+  "eeg": "SIMULATED",
+  "selections": [
+    {
+      "t": 6.32,
+      "id": 1,
+      "label": "A",
+      "correct": true
+    },
+    {
+      "t": 17.32,
+      "id": 4,
+      "label": "D",
+      "correct": true
+    }
+  ],
+  "correct_selections": 2,
+  "false_selections": 0,
+  "false_per_min_lookaround": null,
+  "arrivals": [
+    {
+      "t": 31.3,
+      "id": 1,
+      "label": "A",
+      "time_to_goal_s": 24.88
+    },
+    {
+      "t": 50.44,
+      "id": 4,
+      "label": "D",
+      "time_to_goal_s": 17.59
+    }
+  ],
+  "detection_latency_s": [
+    2.32,
+    2.32
+  ],
+  "path_length_m": 29.9,
+  "min_clearance_m": 0.149,
+  "collisions": 0,
+  "collision_monitor_activations": 12,
+  "mux_share": {
+    "NAVIGATION": 0.967,
+    "NONE": 0.033
+  },
+  "states_seen": [
+    "WANDER",
+    "ENGAGED",
+    "ARRIVED",
+    "ENGAGED",
+    "ARRIVED",
+    "WANDER"
+  ],
+  "final_state": "WANDER",
+  "expectation_failures": [],
+  "passed": true
+}

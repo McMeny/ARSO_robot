@@ -23,6 +23,7 @@ from std_msgs.msg import Bool, Empty, Float32, String
 from tf2_ros import Buffer, TransformListener
 
 from eyesteer_core import config
+from eyesteer_core.control.diffdrive_kinematics import deadband_compensate
 from eyesteer_core.control.footprint import Footprint, RotationGuard
 from eyesteer_core.control.mux_rules import LOCKS, TOPICS, DeadMan, Mux
 from eyesteer_core.control.mux_rules import Twist as CTwist
@@ -39,6 +40,8 @@ class SafetyNode(Node):
         self.fp = Footprint(config.geometry(self.robot)["footprint"])
         self.guard = RotationGuard(self.fp)
         self.lidar = r["lidar"]
+        hw = config.hardware()
+        self.wheel = (r["wheels"]["radius"], r["wheels"]["separation"], hw["encoders"]["counts_per_rev"], hw["mcu"]["pid_rate_hz"])
         self.mux = Mux()
         self.scale = 1.0
         self.grip, self.grip_t = False, -1e9
@@ -142,6 +145,10 @@ class SafetyNode(Node):
         self.pub_cm.publish(String(data=state))
         # D9 watchdog: stale -> zero
         out = self.last_cm if (t - self.last_cm_t) <= self.timeout else Twist()
+        if out.linear.x != 0.0 or out.angular.z != 0.0:
+            v, w = deadband_compensate(out.linear.x, out.angular.z, *self.wheel)
+            out = Twist()
+            out.linear.x, out.angular.z = v, w
         self.pub_out.publish(out)
 
 

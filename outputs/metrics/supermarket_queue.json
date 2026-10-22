@@ -33,26 +33,26 @@
   ],
   "arrivals": [
     {
-      "t": 40.43,
+      "t": 41.82,
       "id": 2,
       "label": "Bread",
-      "time_to_goal_s": 34.82
+      "time_to_goal_s": 36.21
     },
     {
-      "t": 61.61,
+      "t": 63.92,
       "id": 3,
       "label": "Milk",
-      "time_to_goal_s": 19.65
+      "time_to_goal_s": 20.57
     }
   ],
-  "path_length_m": 15.4,
+  "path_length_m": 15.47,
   "min_clearance_m": 0.203,
   "collisions": 0,
   "contact_frames": 0,
-  "collision_monitor_activations": 5,
+  "collision_monitor_activations": 4,
   "mux_share": {
-    "NAVIGATION": 0.639,
-    "NONE": 0.361
+    "NAVIGATION": 0.666,
+    "NONE": 0.334
   },
   "states_seen": [
     "ASSIST",
@@ -63,8 +63,8 @@
     "ASSIST"
   ],
   "final_state": "ASSIST",
-  "odom_drift_m": 0.0873,
-  "odom_drift_per_m": 0.00567,
+  "odom_drift_m": 0.0851,
+  "odom_drift_per_m": 0.0055,
   "nav_failures": 0,
   "expectation_failures": [],
   "passed": true

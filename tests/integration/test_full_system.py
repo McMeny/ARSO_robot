@@ -86,6 +86,7 @@ def run_until(page, tr, pred_js, timeout, every=0.25):
 def latencies(page):
     st = page.evaluate("window.eyesteer.state()")
     lat = st["latency"]
+    off = st["clockOffset"] or 0.0          # robot wall clock - page clock (NTP-style ping)
     out = {k: [] for k in BUDGET}
     for e in lat:
         if e["event"] == "goal_accepted":
@@ -95,7 +96,7 @@ def latencies(page):
         elif e["event"] == "wheel_response" and e.get("backend") == "mujoco_hil":
             out["cmd_vel -> wheel response, HIL (ms)"].append(e["dt_ms"])
         elif e["event"] == "state":
-            out["robot state change -> visible in headset (ms)"].append(1000 * (e["rx"] - e["wall"]))
+            out["robot state change -> visible in headset (ms)"].append(1000 * (e["rx"] - (e["wall"] - off)))
     for sel in st["selections"]:
         aims = [a for a in st["aimLog"] if a["id"] == sel["id"] and a["t"] <= sel["t"]]
         if aims:

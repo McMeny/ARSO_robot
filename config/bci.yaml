@@ -31,7 +31,7 @@ engagement:
   gate: soft                        # off | soft | required
   baseline_s: 30.0
   z_required: 0.0                   # gate 'required': z must exceed this
-  soft_rho_bonus: 0.05              # gate 'soft': threshold relaxed when z > 1, raised when z < -1
+  soft_rho_bonus: 0.05              # gate 'soft': threshold raised by this when z < -1 (one-sided, see DECISIONS.md)
 
 signal_quality:
   flat_uv: 0.5                      # std below this over 1 s -> flat-line

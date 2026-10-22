@@ -111,7 +111,7 @@ class RotationGuard:
     short memory of LiDAR points (world frame) is checked against the full footprint grown by `margin`
     before an in-place turn is allowed."""
 
-    def __init__(self, fp: Footprint, margin: float = 0.1, memory_s: float = 2.0):
+    def __init__(self, fp: Footprint, margin: float = 0.05, memory_s: float = 2.0):
         self.poly = fp.grown(margin)
         self.memory_s = memory_s
         self.mem: list = []

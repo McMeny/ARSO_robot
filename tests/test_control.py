@@ -2,6 +2,7 @@
 import math
 
 import numpy as np
+import pytest
 
 from eyesteer_core import config
 from eyesteer_core.control.admittance import Admittance, pullback_scale
@@ -84,6 +85,17 @@ def test_kinematics_roundtrip_and_odometry():
         odo.update(al, ar, 0.01)
     R = 0.4 / 0.3
     assert math.isclose(odo.x, R * math.sin(3.0), abs_tol=1e-3)
+
+
+def test_deadband_compensation():
+    from eyesteer_core.control.diffdrive_kinematics import deadband_compensate
+    r, b, cpr, rate = 0.1, 0.56, 1320, 30
+    one_count = 2 * math.pi / cpr * rate
+    v, w = deadband_compensate(0.0, -0.048, r, b, cpr, rate)      # walker turn scaled to 30 % by the collision monitor
+    wl, wr = twist_to_wheels(v, w, r, b)
+    assert abs(wl) >= one_count and abs(wr) >= one_count and w < 0 and abs(v) < 1e-9
+    assert deadband_compensate(0.3, 0.2, r, b, cpr, rate) == pytest.approx((0.3, 0.2))   # normal commands untouched
+    assert deadband_compensate(0.0, 0.0, r, b, cpr, rate) == (0.0, 0.0)
 
 
 def test_rate_limiter():

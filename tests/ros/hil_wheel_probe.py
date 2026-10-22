@@ -50,6 +50,10 @@ def main(robot="field_robot"):
             odo.update(*sim.wheel_angles(), 0.01)
             speeds.append(sim.wheel_velocities())
         tail = speeds[len(speeds) // 2:]
+        mr = sum(s[1] for s in tail) / len(tail)
+        yaw_kin = sim.wr * (mr - sum(s[0] for s in tail) / len(tail)) / sim.ws
+        print(f"   R mean {mr:+.2f} rad/s, kinematic yaw rate {yaw_kin:+.3f}, truth yaw rate {sim.twist()[1]:+.3f}, "
+              f"pwm {emu.core.pwm()}, w_out {[round(v, 2) for v in emu._w_out]}")
         ml = sum(s[0] for s in tail) / len(tail)
         sl = math.sqrt(sum((s[0] - ml) ** 2 for s in tail) / len(tail))
         x, y, yaw = sim.pose()

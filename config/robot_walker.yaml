@@ -64,7 +64,7 @@ nav:
   cost_scaling_factor: 2.5
   goal_xy_tolerance: 0.30
   goal_yaw_tolerance_deg: 20
-  approach_distance: 1.0     # axle 1 m from the anchored point: room to turn around (sweep radius 0.73 m + 0.1 m guard)
+  approach_distance: 1.1     # axle 1.1 m from the anchored point: front 0.5 m from the shelf (outside the 0.4 m slowdown zone, which also slows in-place turns) and room to turn around (sweep radius 0.73 m)
   # Runtime-C planner stand-in (Nav2 uses the footprint polygon directly):
   lethal_margin: 0.15       # planner keeps the axle >= inscribed radius + this from obstacles
   path_clearance: 0.15      # planned footprint poses keep > collision-monitor stop margin (0.1 m)

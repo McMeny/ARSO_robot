@@ -138,7 +138,7 @@
       "cost_scaling_factor": 2.5,
       "goal_xy_tolerance": 0.3,
       "goal_yaw_tolerance_deg": 20,
-      "approach_distance": 1.0,
+      "approach_distance": 1.1,
       "lethal_margin": 0.15,
       "path_clearance": 0.15,
       "lookahead": 0.45

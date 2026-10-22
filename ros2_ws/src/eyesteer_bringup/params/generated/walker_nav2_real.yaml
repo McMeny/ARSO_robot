@@ -93,7 +93,11 @@ controller_server:
       use_rotate_to_heading: true
       allow_reversing: false
       rotate_to_heading_min_angle: 0.785
-      max_angular_accel: 1.0
+      # RPP ramps rotation from the MEASURED angular speed: with the walker's 1.0 rad/s^2 the first command
+      # (0.05 rad/s) is < 1 encoder count per 30 Hz loop, diffdrive_arduino truncates it to 0, the robot never
+      # starts turning and RPP repeats 0.05 forever (seen in HIL at every goal). diff_drive_controller still
+      # enforces the real acceleration limits (it ramps from its previous command, not the measured speed).
+      max_angular_accel: 3.2
       max_robot_pose_search_dist: 10.0
 
 local_costmap:

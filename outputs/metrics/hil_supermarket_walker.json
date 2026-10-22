@@ -1,0 +1,64 @@
+{
+  "scenario": "supermarket_walker",
+  "runtime": "ros_hil",
+  "robot": "walker",
+  "world": "supermarket",
+  "duration_s": 200.0,
+  "eeg": "SIMULATED",
+  "selections": [
+    {
+      "t": 5.24,
+      "id": 1,
+      "label": "Beans",
+      "correct": true
+    },
+    {
+      "t": 46.97,
+      "id": 5,
+      "label": "Checkout",
+      "correct": true
+    }
+  ],
+  "correct_selections": 2,
+  "false_selections": 0,
+  "false_per_min_lookaround": null,
+  "arrivals": [
+    {
+      "t": 36.31,
+      "id": 1,
+      "label": "Beans",
+      "time_to_goal_s": 30.97
+    },
+    {
+      "t": 84.85,
+      "id": 5,
+      "label": "Checkout",
+      "time_to_goal_s": 37.82
+    }
+  ],
+  "detection_latency_s": [
+    2.24,
+    2.97
+  ],
+  "path_length_m": 18.14,
+  "min_clearance_m": 0.131,
+  "collisions": 0,
+  "collision_monitor_activations": 0,
+  "mux_share": {
+    "LOCK:DEADMAN": 0.011,
+    "NAVIGATION": 0.337,
+    "NONE": 0.653
+  },
+  "states_seen": [
+    "ASSIST",
+    "ENGAGED",
+    "ARRIVED",
+    "ASSIST",
+    "ENGAGED",
+    "ARRIVED",
+    "ASSIST"
+  ],
+  "final_state": "ASSIST",
+  "expectation_failures": [],
+  "passed": true
+}

@@ -27,27 +27,27 @@
   ],
   "arrivals": [
     {
-      "t": 42.4,
+      "t": 39.07,
       "id": 1,
       "label": "Beans",
-      "time_to_goal_s": 36.55
+      "time_to_goal_s": 33.22
     },
     {
-      "t": 82.65,
+      "t": 83.67,
       "id": 5,
       "label": "Checkout",
-      "time_to_goal_s": 35.22
+      "time_to_goal_s": 36.24
     }
   ],
-  "path_length_m": 18.53,
-  "min_clearance_m": 0.046,
+  "path_length_m": 18.25,
+  "min_clearance_m": 0.086,
   "collisions": 0,
   "contact_frames": 0,
-  "collision_monitor_activations": 7,
+  "collision_monitor_activations": 4,
   "mux_share": {
     "LOCK:DEADMAN": 0.021,
-    "NAVIGATION": 0.658,
-    "NONE": 0.321
+    "NAVIGATION": 0.637,
+    "NONE": 0.343
   },
   "states_seen": [
     "ASSIST",
@@ -59,8 +59,8 @@
     "ASSIST"
   ],
   "final_state": "ASSIST",
-  "odom_drift_m": 0.3553,
-  "odom_drift_per_m": 0.01917,
+  "odom_drift_m": 0.3608,
+  "odom_drift_per_m": 0.01977,
   "nav_failures": 0,
   "expectation_failures": [],
   "passed": true

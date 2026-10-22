@@ -56,5 +56,19 @@ class EncoderOdometry:
         return self.x, self.y, self.yaw
 
 
+def deadband_compensate(v: float, w: float, radius: float, separation: float, cpr: int, loop_rate: float,
+                        factor: float = 1.5) -> tuple[float, float]:
+    """diffdrive_arduino sends integer encoder counts per PID loop; a wheel speed below one count per loop
+    is truncated to 0. A small non-zero command (e.g. a rotation scaled down by the collision monitor)
+    then never moves the robot, its measured speed stays 0, and an accel-limited controller repeats the
+    same tiny command forever. Raise each non-zero wheel speed to at least `factor` counts per loop."""
+    w_min = factor * 2 * math.pi / cpr * loop_rate          # wheel rad/s
+    wl, wr = twist_to_wheels(v, w, radius, separation)
+    out = []
+    for x in (wl, wr):
+        out.append(math.copysign(w_min, x) if 1e-6 < abs(x) < w_min else x)
+    return wheels_to_twist(out[0], out[1], radius, separation)
+
+
 def wrap(a: float) -> float:
     return math.atan2(math.sin(a), math.cos(a))

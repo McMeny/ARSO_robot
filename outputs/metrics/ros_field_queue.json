@@ -3,17 +3,17 @@
   "runtime": "ros_sim",
   "robot": "field_robot",
   "world": "field",
-  "duration_s": 84.0,
+  "duration_s": 110.0,
   "eeg": "SIMULATED",
   "selections": [
     {
-      "t": 6.23,
+      "t": 6.47,
       "id": 1,
       "label": "A",
       "correct": true
     },
     {
-      "t": 17.77,
+      "t": 17.15,
       "id": 4,
       "label": "D",
       "correct": true
@@ -24,23 +24,29 @@
   "false_per_min_lookaround": null,
   "arrivals": [
     {
-      "t": 32.92,
+      "t": 32.49,
       "id": 1,
-      "label": "A"
+      "label": "A",
+      "time_to_goal_s": 25.95
     },
     {
-      "t": 55.32,
+      "t": 51.6,
       "id": 4,
-      "label": "D"
+      "label": "D",
+      "time_to_goal_s": 17.45
     }
   ],
-  "path_length_m": 26.05,
-  "min_clearance_m": 0.122,
+  "detection_latency_s": [
+    2.47,
+    2.15
+  ],
+  "path_length_m": 36.53,
+  "min_clearance_m": 0.097,
   "collisions": 0,
   "collision_monitor_activations": 1,
   "mux_share": {
-    "NAVIGATION": 0.963,
-    "NONE": 0.037
+    "NAVIGATION": 0.97,
+    "NONE": 0.03
   },
   "states_seen": [
     "WANDER",

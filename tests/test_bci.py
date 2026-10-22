@@ -140,7 +140,7 @@ def test_engagement_tracks_and_gates():
         zs.append(tr.update(x[:, :4]))
     assert np.mean(zs[-20:]) > 0.8
     assert gate_allows("required", 1.0, 0.0) and not gate_allows("required", -0.5, 0.0)
-    assert gate_allows("off", -5) and gate_threshold("soft", 0.35, 1.5) < 0.35 < gate_threshold("soft", 0.35, -1.5)
+    assert gate_allows("off", -5) and gate_threshold("soft", 0.35, 1.5) == 0.35 < gate_threshold("soft", 0.35, -1.5)
 
 
 def test_calibration_profile_reasonable():

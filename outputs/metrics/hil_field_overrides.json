@@ -1,0 +1,49 @@
+{
+  "scenario": "field_overrides",
+  "runtime": "ros_hil",
+  "robot": "field_robot",
+  "world": "field",
+  "duration_s": 62.0,
+  "eeg": "SIMULATED",
+  "selections": [
+    {
+      "t": 4.98,
+      "id": 2,
+      "label": "B",
+      "correct": true
+    },
+    {
+      "t": 27.32,
+      "id": 6,
+      "label": "CANCEL",
+      "correct": true
+    }
+  ],
+  "correct_selections": 2,
+  "false_selections": 0,
+  "false_per_min_lookaround": null,
+  "arrivals": [],
+  "detection_latency_s": [
+    1.98,
+    2.32
+  ],
+  "path_length_m": 11.28,
+  "min_clearance_m": 0.15,
+  "collisions": 0,
+  "collision_monitor_activations": 7,
+  "mux_share": {
+    "LOCK:ESTOP": 0.354,
+    "NAVIGATION": 0.574,
+    "TELEOP": 0.072
+  },
+  "states_seen": [
+    "WANDER",
+    "ENGAGED",
+    "WANDER",
+    "ESTOP",
+    "WANDER"
+  ],
+  "final_state": "WANDER",
+  "expectation_failures": [],
+  "passed": true
+}

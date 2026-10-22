@@ -1,0 +1,78 @@
+{
+  "scenario": "supermarket_queue",
+  "runtime": "ros_hil",
+  "robot": "walker",
+  "world": "supermarket",
+  "duration_s": 130.0,
+  "eeg": "SIMULATED",
+  "selections": [
+    {
+      "t": 4.47,
+      "id": 1,
+      "label": "Beans",
+      "correct": false
+    },
+    {
+      "t": 5.49,
+      "id": 2,
+      "label": "Bread",
+      "correct": true
+    },
+    {
+      "t": 16.5,
+      "id": 3,
+      "label": "Milk",
+      "correct": true
+    },
+    {
+      "t": 18.49,
+      "id": 3,
+      "label": "Milk",
+      "correct": true
+    }
+  ],
+  "correct_selections": 3,
+  "false_selections": 1,
+  "false_per_min_lookaround": null,
+  "arrivals": [
+    {
+      "t": 36.6,
+      "id": 1,
+      "label": "Beans",
+      "time_to_goal_s": 32.05
+    },
+    {
+      "t": 63.03,
+      "id": 2,
+      "label": "Bread",
+      "time_to_goal_s": 24.98
+    }
+  ],
+  "detection_latency_s": [
+    2.49,
+    2.5
+  ],
+  "path_length_m": 13.87,
+  "min_clearance_m": 0.143,
+  "collisions": 0,
+  "collision_monitor_activations": 2,
+  "mux_share": {
+    "NAVIGATION": 0.948,
+    "NONE": 0.052
+  },
+  "states_seen": [
+    "ASSIST",
+    "ENGAGED",
+    "ARRIVED",
+    "ENGAGED",
+    "ARRIVED",
+    "ENGAGED"
+  ],
+  "final_state": "ENGAGED",
+  "expectation_failures": [
+    "visited [1, 2] != [2, 3]",
+    "final state ENGAGED != ASSIST",
+    "false selections 1 > 0"
+  ],
+  "passed": false
+}

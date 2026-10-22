@@ -83,6 +83,8 @@ class ModeManagerNode(Node):
         self.loc_ok = True
         self.create_subscription(LaserScan, "/scan", self.on_scan, rclpy.qos.qos_profile_sensor_data)
         self.create_subscription(Odometry, "/odom", self.on_odom, 10)
+        # clock-offset ping from the headset (NTP-style), so latencies across machines are measurable
+        self.create_subscription(String, "/eyesteer/ping", lambda m: self.event("pong", ping=m.data), 10)
         self.pub_status = self.create_publisher(RobotStatus, "/robot/status", 10)
         self.pub_wander = self.create_publisher(Bool, "/wander/enable", LATCHED)
         self.create_subscription(Selection, "/bci/selection", self.on_selection, 10)
