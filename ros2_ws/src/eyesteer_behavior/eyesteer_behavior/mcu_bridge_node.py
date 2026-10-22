@@ -86,6 +86,9 @@ class McuBridge(Node):
         """One request/response with the MCU (serialized)."""
         with self.lock:
             try:
+                # drop any late reply of an earlier, timed-out request: otherwise every following reply is
+                # shifted by one (diffdrive_arduino would read "OK" as encoder counts). Same as its FlushIOBuffers.
+                self.ser.reset_input_buffer()
                 self.ser.write(line)
                 self.ser.timeout = timeout
                 reply = self.ser.readline()

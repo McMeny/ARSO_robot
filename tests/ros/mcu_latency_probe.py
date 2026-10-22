@@ -33,6 +33,6 @@ def trial(robot, counts, offset):
     return float("inf")
 
 
-for robot, counts in (("field_robot", 20), ("walker", 10)):
+for robot, counts in (("field_robot", 20), ("walker", 6)):
     lat = sorted(trial(robot, counts, k) for k in range(0, 16, 2))
     print(f"{robot}: m->wheel moving  min {lat[0]:.0f} ms  median {lat[len(lat) // 2]:.0f} ms  max {lat[-1]:.0f} ms")

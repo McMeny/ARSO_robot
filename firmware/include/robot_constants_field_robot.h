@@ -10,7 +10,7 @@
 #define MAX_PWM 255
 #define FF_COUNTS_AT_MAX_PWM 105
 #define MAX_COUNTS_PER_LOOP 84
-#define MAX_ACCEL_COUNTS_PER_LOOP2 7
+#define MAX_ACCEL_COUNTS_PER_LOOP2 15
 #define PID_KP 20
 #define PID_KD 12
 #define PID_KI 0

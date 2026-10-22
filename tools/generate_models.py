@@ -405,7 +405,7 @@ def firmware_header(r: dict, hw: dict) -> str:
          f"#define MAX_PWM {mcu['max_pwm']}",
          f"#define FF_COUNTS_AT_MAX_PWM {hw['encoders'].get('ff_counts_per_loop_at_max_pwm') or max(1, round(max_counts_per_loop * 1.25))}",
          f"#define MAX_COUNTS_PER_LOOP {max(1, round(max_counts_per_loop))}",
-         f"#define MAX_ACCEL_COUNTS_PER_LOOP2 {max(1, round(lim['a_max'] * counts_per_m / mcu['pid_rate_hz'] ** 2 * 4))}",
+         f"#define MAX_ACCEL_COUNTS_PER_LOOP2 {max(1, round(lim['a_max'] * counts_per_m / mcu['pid_rate_hz'] ** 2 * 8))}",
          f"#define PID_KP {r['pid']['kp']}", f"#define PID_KD {r['pid']['kd']}",
          f"#define PID_KI {r['pid']['ki']}", f"#define PID_KO {r['pid']['ko']}",
          f"#define INVERT_LEFT_MOTOR {int(md['invert_left'])}", f"#define INVERT_RIGHT_MOTOR {int(md['invert_right'])}",
