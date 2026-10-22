@@ -82,6 +82,7 @@ eeg:
     eye_as_camera: {stream_name: Muse, stream_type: EEG, channels: [TP9, AF7, AF8, TP10, Right AUX], fs: 256, units: microvolts}
   channel_map: {TP9: 0, AF7: 1, AF8: 2, TP10: 3, Oz: 4}   # Oz = the cup electrode on the AUX input
   resolve_timeout_s: 5.0
+  stream_host: ""             # hostname of the machine streaming the Muse; "" = any (set it if two Muse streams are on the network)
   expected_fs: 256
   line_freq_hz: 60            # 50 in Europe
 

@@ -43,6 +43,8 @@ class SsvepNode(Node):
         self.source_label = p("source_label", "REAL").value          # SIMULATED | REPLAYED | REAL (D18)
         self.user = p("user", "default").value
         self.resolve_timeout = p("resolve_timeout", float(hw["resolve_timeout_s"])).value
+        self.stream_host = p("stream_host", hw.get("stream_host") or "").value
+        self.stream_source_id = p("stream_source_id", "").value   # sim: exactly this launch's emulator
         self.channel_map = dict(hw["channel_map"])
         self.cfg = config.bci()
         self.table = config.frequency_table()
@@ -84,15 +86,19 @@ class SsvepNode(Node):
 
     # ------------------------------------------------------------------ acquisition
     def connect(self) -> bool:
-        res = pylsl.resolve_byprop("name", self.stream_name, 1, self.resolve_timeout)
+        res = pylsl.resolve_byprop("name", self.stream_name, 0, self.resolve_timeout)
         res = [r for r in res if r.type() == self.stream_type]
+        if self.stream_host:   # several Muse streams on the network (laptop + Jetson): pin the producer
+            res = [r for r in res if r.hostname() == self.stream_host]
+        if self.stream_source_id:
+            res = [r for r in res if r.source_id() == self.stream_source_id]
         if not res:
             return False
         info = res[0]
         self.inlet = pylsl.StreamInlet(info, max_buflen=4, processing_flags=pylsl.proc_clocksync | pylsl.proc_dejitter)
         self.inlet.open_stream(timeout=self.resolve_timeout)
         self.get_logger().info(f"LSL connected: {info.name()} {info.type()} {info.channel_count()} ch @ {info.nominal_srate()} Hz "
-                               f"(source_id {info.source_id()})")
+                               f"(source_id {info.source_id()}, host {info.hostname()})")
         self.last_sample_wall = time.monotonic()
         return True
 

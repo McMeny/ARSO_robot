@@ -2,7 +2,9 @@
 Never outputs velocities (D7). Publishes /robot/status (10 Hz) for the headset, RViz and the dashboard."""
 from __future__ import annotations
 
+import json
 import math
+import time
 
 from eyesteer_behavior import _root  # noqa: F401
 
@@ -11,7 +13,9 @@ import rclpy
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from nav2_msgs.action import NavigateToPose
-from nav_msgs.msg import OccupancyGrid
+from nav_msgs.msg import OccupancyGrid, Odometry
+from sensor_msgs.msg import LaserScan
+from tf2_ros import Buffer, TransformListener
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
@@ -70,6 +74,15 @@ class ModeManagerNode(Node):
         self.headset_seen = None
         self.headset_ok = None
         self.nav = ActionClient(self, NavigateToPose, "navigate_to_pose")
+        self.pub_lat = self.create_publisher(String, "/eyesteer/latency", 10)
+        self.lat = {"selection": None, "accepted": None, "moving_reported": True}
+        self.last_display = None
+        self.tf = Buffer()
+        TransformListener(self.tf, self)
+        self.loc_bad_since = None
+        self.loc_ok = True
+        self.create_subscription(LaserScan, "/scan", self.on_scan, rclpy.qos.qos_profile_sensor_data)
+        self.create_subscription(Odometry, "/odom", self.on_odom, 10)
         self.pub_status = self.create_publisher(RobotStatus, "/robot/status", 10)
         self.pub_wander = self.create_publisher(Bool, "/wander/enable", LATCHED)
         self.create_subscription(Selection, "/bci/selection", self.on_selection, 10)
@@ -101,7 +114,53 @@ class ModeManagerNode(Node):
         self.fsm.set_markers(list(self.markers), [i for i, mk in self.markers.items() if mk.cancel])
 
     def on_selection(self, m: Selection):
+        self.lat["selection"] = time.time()
+        self.event("selection", marker=m.marker_id, label=m.label)
         self.run_cmds(self.fsm.on_selection(m.marker_id, self.now()))
+
+    # ------------------------------------------------------------------ latency instrumentation (Section 24.7)
+    def event(self, name, **kw):
+        self.pub_lat.publish(String(data=json.dumps({"event": name, "wall": time.time(), **kw})))
+
+    def on_odom(self, m: Odometry):
+        moving = abs(m.twist.twist.linear.x) + abs(m.twist.twist.angular.z) > 0.03
+        if not self.lat["moving_reported"] and self.lat["accepted"] and moving:
+            self.lat["moving_reported"] = True
+            self.event("moving", dt_ms=1000 * (time.time() - self.lat["accepted"]))
+
+    # ------------------------------------------------------------------ localization consistency (24.5)
+    def on_scan(self, s: LaserScan):
+        """Fraction of LiDAR hits near an occupied /map cell at the current map pose. A teleported
+        (kidnapped) robot keeps a confident but wrong AMCL pose; this catches it."""
+        if self.clear is None:
+            return
+        try:
+            t = self.tf.lookup_transform("map", s.header.frame_id, rclpy.time.Time())
+        except Exception:
+            return
+        q = t.transform.rotation
+        yaw = math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
+        r = np.asarray(s.ranges, float)
+        a = s.angle_min + np.arange(len(r)) * s.angle_increment
+        ok = np.isfinite(r) & (r > s.range_min) & (r < min(s.range_max, 8.0))
+        if ok.sum() < 20:
+            return
+        x = t.transform.translation.x + r[ok] * np.cos(a[ok] + yaw)
+        y = t.transform.translation.y + r[ok] * np.sin(a[ok] + yaw)
+        ratio = float(np.mean(self.clear.sdf(x, y) < 0.25))
+        now = self.now()
+        if ratio < 0.4:
+            self.loc_bad_since = self.loc_bad_since or now
+            if self.loc_ok and now - self.loc_bad_since > 2.0:
+                self.loc_ok = False
+                self.get_logger().error(f"LOCALIZATION LOST: only {ratio * 100:.0f} % of the scan matches the map")
+                self.run_cmds(self.fsm.on_localization(now, False))
+        else:
+            self.loc_bad_since = None
+            if not self.loc_ok and ratio > 0.7:
+                self.loc_ok = True
+                self.get_logger().info(f"localization recovered ({ratio * 100:.0f} % scan match)")
+                self.run_cmds(self.fsm.on_localization(now, True))
 
     def on_estop(self, m: Bool):
         if m.data:
@@ -112,8 +171,9 @@ class ModeManagerNode(Node):
 
     def on_amcl(self, m: PoseWithCovarianceStamped):
         c = m.pose.covariance
-        ok = (c[0] + c[7]) < self.lost_cov
-        self.run_cmds(self.fsm.on_localization(self.now(), ok))
+        if (c[0] + c[7]) > self.lost_cov and self.loc_ok:
+            self.loc_ok = False
+            self.run_cmds(self.fsm.on_localization(self.now(), False))
 
     def on_bci(self, m: BciStatus):
         ok = bool(m.signal_ok)
@@ -179,6 +239,10 @@ class ModeManagerNode(Node):
             self.run_cmds(self.fsm.on_nav_failed(self.now(), "goal rejected"))
             return
         self.goal_handle = gh
+        if self.lat["selection"]:
+            self.event("goal_accepted", dt_ms=1000 * (time.time() - self.lat["selection"]))
+            self.lat["selection"] = None
+        self.lat["accepted"], self.lat["moving_reported"] = time.time(), False
         gh.get_result_async().add_done_callback(lambda f: self.on_result(f, seq))
 
     def on_result(self, fut, seq):
@@ -217,6 +281,9 @@ class ModeManagerNode(Node):
         m.estop, m.deadman_locked, m.motion_locked = self.estop or st.state == "ESTOP", self.deadman, self.motion_locked
         m.reason, m.eeg_source = st.reason, self.eeg_source
         self.pub_status.publish(m)
+        if m.display != self.last_display:
+            self.last_display = m.display
+            self.event("state", display=m.display)
 
 
 def main():

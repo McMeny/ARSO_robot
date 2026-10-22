@@ -1,0 +1,1 @@
+{"type":"module","private":true,"name":"eyesteer-webxr","scripts":{"test":"node --test tests/"}}

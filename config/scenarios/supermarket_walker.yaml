@@ -9,6 +9,7 @@ seed: 7
 snr: 1.0
 camera: chase
 people_delay: {shopper_1: 12.0}
+ros: {duration: 150}   # Nav2 drives more conservatively than the Runtime C planner
 events:
   - {t: 0, caption: "Walker at the entrance in ASSIST: it only moves when pushed. The user looks at 'Beans'…"}
   - {t: 3, gaze: 1, dur: 3.5, engagement: 1.0}

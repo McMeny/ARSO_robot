@@ -1,0 +1,14 @@
+[Unit]
+Description=eyesteer real robot stack (real.launch.py; includes rosbridge and the web server)
+After=network-online.target
+
+[Service]
+User=@USER@
+WorkingDirectory=@ROOT@
+ExecStart=/bin/bash -c 'source @ROOT@/deploy/env.sh && ros2 launch eyesteer_bringup real.launch.py eeg:=lsl map:=${HOME}/maps/demo.yaml'
+Restart=no
+KillSignal=SIGINT
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eye Steering Headset</title>
+  <link rel="stylesheet" href="css/app.css">
+  <script src="vendor/roslib.min.js"></script>
+</head>
+<body>
+  <div id="overlay-root">
+    <header id="topbar">
+      <span class="brand">Eye as a Steering Wheel</span>
+      <span id="conn" class="pill bad">rosbridge: connecting…</span>
+      <span id="eeg-badge" class="badge">EEG …</span>
+      <nav id="tabs">
+        <button data-mode="calibrate">Calibrate</button>
+        <button data-mode="place">Place markers</button>
+        <button data-mode="run">Run</button>
+      </nav>
+      <button id="enter-xr" disabled>Enter MR (passthrough)</button>
+      <span id="timing" class="pill">– Hz</span>
+      <a href="dashboard.html" class="link">Health</a>
+    </header>
+
+    <section id="consent" class="modal">
+      <h2>Photosensitivity warning</h2>
+      <p>This app shows <strong>flickering markers (6–13 Hz)</strong>. Flicker in this range can trigger seizures in people with
+        photosensitive epilepsy. Do not continue if you or anyone watching has a history of seizures or epilepsy.
+        Stop immediately if you feel unwell.</p>
+      <p>Markers are virtual: they exist only in this headset view. The robot only ever receives <em>goals</em>, never speeds;
+        e-stop, the walker grip and teleop always override.</p>
+      <button id="consent-ok">I understand, continue</button>
+    </section>
+
+    <section id="warning" class="modal hidden">
+      <h2>Display refresh mismatch</h2>
+      <p id="warning-text"></p>
+      <button id="warning-reload">Reload with the matching frequency set</button>
+      <button id="warning-dismiss" class="secondary">Continue in preview only</button>
+    </section>
+
+    <main id="layout">
+      <canvas id="preview" width="900" height="640" aria-label="Desktop preview: top-down view of markers and robot"></canvas>
+      <aside id="side">
+        <div class="card" id="status-card">
+          <h3>Robot</h3>
+          <div id="st-display" class="big">–</div>
+          <div id="st-queue">queue: –</div>
+          <div id="st-mux">mux: –</div>
+          <div id="st-safety">safety: –</div>
+          <div id="st-reason" class="muted"></div>
+        </div>
+        <div class="card" id="bci-card">
+          <h3>BCI <span id="bci-source" class="badge"></span></h3>
+          <div id="bci-bars"></div>
+          <div id="bci-quality" class="muted"></div>
+        </div>
+        <div class="card" id="mode-card">
+          <h3 id="mode-title">Mode</h3>
+          <div id="mode-body"></div>
+        </div>
+        <div class="card" id="health-card">
+          <h3>System health</h3>
+          <ul id="health-list"></ul>
+        </div>
+      </aside>
+    </main>
+    <footer id="caption" class="muted">Desktop preview. Click a marker to aim at it (synthetic gaze in sim). Real flicker runs only in the headset.</footer>
+  </div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

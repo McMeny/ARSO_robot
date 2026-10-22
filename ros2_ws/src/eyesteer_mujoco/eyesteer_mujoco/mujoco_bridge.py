@@ -25,7 +25,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Imu, JointState, LaserScan
-from std_msgs.msg import Bool, Float32MultiArray, Int32
+from std_msgs.msg import Bool, Float32MultiArray, Int32, String
 from tf2_ros import TransformBroadcaster
 
 from eyesteer_core.control.diffdrive_kinematics import EncoderOdometry
@@ -105,10 +105,15 @@ class MujocoBridge(Node):
         self.create_subscription(Point, "/sim/spawn_obstacle", lambda m: self.sim.spawn_obstacle(m.x, m.y, m.z or 0.25), 10)
         self.create_subscription(Pose2D, "/sim/teleport", lambda m: self._teleport(m), 10)
         self.create_subscription(Bool, "/sim/kill_mcu", self.on_kill_mcu, 10)
+        self.lidar_off = False
+        self.create_subscription(Bool, "/sim/lidar_off", lambda m: setattr(self, "lidar_off", m.data), 10)
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL, reliability=ReliabilityPolicy.RELIABLE)
         self.create_subscription(MarkerArray, "/markers", lambda m: setattr(self, "markers", m), latched)
         self.create_subscription(RobotStatus, "/robot/status", lambda m: setattr(self, "status", m), 10)
         self.pub_gaze = self.create_publisher(Int32, "/bci/gaze", 10)
+        self.pub_lat = self.create_publisher(String, "/eyesteer/latency", 10)
+        self.resp_t0 = None      # wall time of the first non-zero /cmd_vel after a stop
+        self.create_subscription(Twist, "/cmd_vel", self.on_cmd_probe, 10)
         self.pub_estop = self.create_publisher(Bool, "/estop", 10)
         self.pub_teleop = self.create_publisher(Twist, "/cmd_vel_teleop", 10)
         self.running = True
@@ -121,6 +126,20 @@ class MujocoBridge(Node):
     def on_cmd(self, m: Twist):
         with self.lock:
             self.cmd, self.cmd_t = (m.linear.x, m.angular.z), self.sim.t
+
+    def on_cmd_probe(self, m: Twist):
+        moving = abs(m.linear.x) > 0.02 or abs(m.angular.z) > 0.05
+        if moving and self.resp_t0 is None and max(abs(w) for w in self.sim.wheel_velocities()) < 0.05:
+            self.resp_t0 = time.time()
+        elif not moving:
+            self.resp_t0 = None
+
+    def _probe_wheels(self):
+        if max(abs(w) for w in self.sim.wheel_velocities()) > 0.3:
+            import json
+            self.pub_lat.publish(String(data=json.dumps({"event": "wheel_response", "wall": time.time(),
+                                                         "dt_ms": 1000 * (time.time() - self.resp_t0), "backend": self.backend})))
+            self.resp_t0 = -1.0   # reported; re-armed when the command returns to zero
 
     def on_force(self, m: Float32MultiArray):
         if len(m.data) >= 2:
@@ -174,6 +193,8 @@ class MujocoBridge(Node):
                 self.sim.step(dt)
                 t = self.sim.t
             self.pub_clock.publish(Clock(clock=stamp(t)))
+            if self.resp_t0 is not None and self.resp_t0 > 0:
+                self._probe_wheels()
             if t - t_pub >= 0.02:
                 t_pub = t
                 self._publish_state(t)
@@ -243,6 +264,8 @@ class MujocoBridge(Node):
         self.pub_js.publish(js)
 
     def _publish_scan(self, t):
+        if self.lidar_off:      # failure injection: LiDAR unplugged
+            return
         with self.lock:
             angles, ranges = self.sim.lidar()
         sc = LaserScan()

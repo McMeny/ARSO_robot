@@ -30,3 +30,54 @@ One line per decision: **decision**: reason.
 - **Collision-monitor zones cover the front half of the footprint only** (shared function `monitor_polygon`, also written into the Nav2 collision_monitor params): a full ring deadlocks the robot beside walls/aisles and around the walker user.
 - **Walker admittance publishes `cmd_vel_admittance` only in ASSIST (idle)**; in ENGAGED, handle forces act through a pull-back scale factor on the nav command (≥12 N back → slow, ≥30 N → stop) so light walking forces never preempt navigation, but pulling back always wins.
 - **twist_mux gets a third lock, `lock/health`** (priority 253): the gated startup (Section 24.4) holds motion locked until all health gates are green.
+
+## Standalone sim (M3)
+- **Runtime C uses the ground-truth pose as its "AMCL" estimate**; encoder odometry is integrated separately and its drift is reported (map shows odometry vs ground truth).
+- **Collision metric = footprint polygon (walker incl. user) vs world SDF + people circles** every frame (MuJoCo contacts are counted too); "collision" = clearance < 0 transition.
+- **Simulated people are polite**: they pause rather than walk into the robot and give way (turn back) after 2 s; otherwise a person and a collision-monitor STOP deadlock forever, which says nothing about the robot.
+- **Collision-monitor STOP zeroes rotation too** (as Nav2); a short Nav2-style back-up recovery + replan follows after 4 s.
+- **Rotation guard for the walker**: in-place turns sweep the user behind the handles, which the front-only zones and the occluded rear LiDAR sector cannot see; a 2 s memory of LiDAR points is checked against the full footprint + 0.1 m before turning (Runtime C and ROS `safety` node). Found when the walker's user clipped a shopper in testing.
+- **Walker planner margins**: lethal radius = inscribed + 0.15 m, planned footprint poses ≥ 0.15 m from obstacles (> stop margin 0.1 m), pure-pursuit lookahead 0.45 m (0.6 m front overhang cuts corners otherwise). Walker inflation 0.95 m centres it in 2.1 m aisles.
+- **Supermarket layout**: checkout counter moved 0.4 m south and Produce/Checkout markers moved so the user-inclusive walker footprint fits every goal pose (verified by planning from four start points to every marker).
+- **Videos: slow 0.5 Hz labeled pulse; `--true-flicker` opt-in with a warning** (30 fps cannot render 6–13 Hz faithfully anyway).
+- **Marker labels hidden behind shelves are drawn faded and marked "(behind)"** (ray test); MR overlays in a real headset draw on top.
+
+## Firmware (M4)
+- **One portable C core (`firmware/lib/eyesteer_fw`) for the MCU, the host tests and the HIL emulator (ctypes)**: the emulator is not a port, it is the same code.
+- **ROSArduinoBridge velocity-form PID, counts per loop at 30 Hz = diffdrive_arduino `loop_rate`**; acceleration limit on the setpoint.
+- **'e' polling does not feed the watchdog**; only `m`/`o` motion commands do.
+- **E-stop input normally-closed to GND (open = stop)**: a cut wire stops the robot; latched until `x` with the button released.
+- **Walker sensors via a serial proxy (`mcu_bridge`)** instead of forking diffdrive_arduino: it owns the port, forwards diffdrive_arduino's lines verbatim through a pty and interleaves `s`/`h` queries (20 Hz). Cleaner than a custom hardware interface; also gives the MCU-link health signal.
+- **Uno: field robot only** (walker needs more interrupt-capable pins). All 7 PlatformIO envs build (mega2560, uno, teensy41, esp32 + walker variants of mega/teensy/esp32).
+- **HX711 read by a minimal bit-bang routine**, forces reported in decinewtons (AVR snprintf has no %f).
+
+## ROS 2 (M5)
+- **ROS 2 Humble (Ubuntu 22.04 / JetPack 6)**; Jazzy supported via `ROS_DISTRO`. Confirmed in WSL: nav2 (bringup, collision_monitor, RPP, navfn), slam_toolbox, ros2_control, xacro available as binaries; **twist_mux (branch humble), rosbridge_suite (branch humble), diffdrive_arduino (branch humble) + libserial built from source** without sudo by `deploy/build_deps_from_source.sh` (apt on the Jetson).
+- **numpy pinned < 1.25 on Humble** (system scipy 1.8); numpy 2 breaks every scipy import. `cbor2` needed by rosbridge.
+- **Synthetic/replayed EEG always goes through a real LSL stream (Muse emulator)** so `ssvep_node` has one code path; the honesty label comes from the launch argument (D18). Each launch gives its emulator a **unique LSL source_id** and the decoder pins it (a stray "Muse" stream on the network, e.g. a test on the same host, was decoded once in testing).
+- **Real EEG: optional `eeg.stream_host`** pins the producer if two Muse streams are on the network.
+- **LSL sample rate measured from sample timestamps** (wall-clock delivery jitter under CPU load made 256 ± 5 Hz flap).
+- **`/scan` published RELIABLE** (compatible with SensorData best-effort subscribers and RViz).
+- **`/amcl_pose` subscribed transient-local**: AMCL publishes it latched and only on motion; a late volatile subscriber never unlocked motion.
+- **Localization-lost detection = scan-to-map consistency** (< 40 % of LiDAR hits near occupied map cells for 2 s) plus AMCL covariance: a kidnapped robot keeps a confident wrong AMCL pose.
+- **Nav2 controller = Regulated Pure Pursuit, planner = NavFn (A*)**; walker BT = Nav2's replanning BT **without Spin** (spinning sweeps the user); sim vs real params differ in speed (0.45/0.4 vs 0.3 m/s) and inflation (+0.1 m).
+- **Collision monitor (Humble params `max_points`, flat `points` list)** between twist_mux and the final watchdog; zones = front of the footprint (stop +0.1 m, slowdown +0.4 m → 30 %), narrow sides.
+- **Prebuilt sim maps = rasterized world geometry**; `tests/integration/test_slam.py` maps the field with slam_toolbox in sim and checks it against them.
+- **Headset link heartbeat = `/xr/timing` (2 Hz)**; 3 s silence = disconnected → field robot finishes its goal then HOLDs (no wander), walker PAUSEs.
+- **Health gates**: startup requires all required gates; at runtime MCU/LiDAR/TF/Nav2/safety re-lock motion, while BCI/headset problems use the FSM fallbacks of 24.5 (a lock there would contradict "the current goal continues").
+- **Latency instrumentation** on `/eyesteer/latency` (JSON events with wall time) so the headless headset client can measure the budget end to end.
+
+## Headset app (M6)
+- **WebXR + Three.js 0.160.0 + roslibjs 1.4.1, vendored** (the Jetson may be offline on demo day). Plain ES modules, no build step.
+- **Desktop preview is a 2D top-down canvas** (works headless without WebGL; used by Playwright).
+- **Square-wave flicker by frame count** `floor(frame / (n/2))` parity (odd n → 4/3 split), sinusoid optional (`?flicker=sinusoid`).
+- **`?emulate_refresh=90` test hook**: a desktop browser runs at 60 Hz; the headless headset client reports the headset rate it emulates (and 72 Hz for the mismatch test). Flicker frames then follow the emulated clock.
+- **Sim calibration default**: map origin placed relative to the user; real sessions use the two-decal calibration.
+- **Anchors**: WebXR anchors used when present; the Jetson's `~/.eyesteer/markers/<map>.yaml` is the persistent store either way.
+- **Node 20.18.1 (portable) and Playwright Chromium** used for tests on this dev machine.
+
+## Deployment (M7)
+- **Native install primary, Docker documented** (L4T base image on the Jetson).
+- **systemd units installed disabled**; started explicitly for a demo.
+- **Self-signed cert with SANs for hostname, .local, localhost and all local IPs**; rosbridge wss uses the same cert.
+- **`jetson_setup.sh --dry-run`** verified on Ubuntu 22.04 (WSL); all shell scripts pass shellcheck.

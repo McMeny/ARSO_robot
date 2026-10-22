@@ -9,6 +9,7 @@ seed: 8
 snr: 1.0
 camera: chase
 disable_people: [shopper_1]
+ros: {duration: 130}
 events:
   - {t: 0, caption: "ASSIST at the entrance. The user looks at 'Bread'…"}
   - {t: 3, gaze: 2, dur: 3.5, engagement: 1.0}

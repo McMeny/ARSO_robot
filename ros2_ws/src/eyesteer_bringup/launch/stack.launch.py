@@ -100,11 +100,18 @@ def setup(context):
         nodes.append(Node(package=beh, executable="wander", parameters=[common, {"world": world}], additional_env=env, output="screen"))
     # ---------------- BCI: synthetic/replay always go through a real LSL stream (Muse emulator)
     label = {"synthetic": "SIMULATED", "replay": "REPLAYED", "lsl": "REAL"}[a["eeg"]]
+    import uuid
+    emu_sid = f"eyesteer-muse-emulator-{uuid.uuid4().hex[:8]}"   # unique per launch: never decode a stray stream
     if a["eeg"] in ("synthetic", "replay"):
         nodes.append(Node(package="eyesteer_bci", executable="muse_emulator", additional_env=env, output="screen",
-                          parameters=[common, {"mode": a["eeg"], "replay_file": a["replay_file"]}]))
+                          parameters=[common, {"mode": a["eeg"], "replay_file": a["replay_file"], "source_id": emu_sid}]))
+    import socket
+    bci_p = {"source_label": label, "user": a["user"]}
+    if a["eeg"] in ("synthetic", "replay"):
+        bci_p["stream_host"] = socket.gethostname()
+        bci_p["stream_source_id"] = emu_sid           # our own emulator, never a stray stream on the network
     nodes.append(Node(package="eyesteer_bci", executable="ssvep_node", additional_env=env, output="screen",
-                      parameters=[common, {"source_label": label, "user": a["user"]}]))
+                      parameters=[common, bci_p]))
     # ---------------- headset link: rosbridge (wss) + HTTPS server
     cert = os.path.join(root, "deploy", "certs", "eyesteer.pem")
     key = os.path.join(root, "deploy", "certs", "eyesteer.key")
@@ -113,7 +120,7 @@ def setup(context):
         if os.path.exists(cert):
             rb.update({"ssl": True, "certfile": cert, "keyfile": key})
         nodes.append(Node(package="rosbridge_server", executable="rosbridge_websocket", name="rosbridge_websocket",
-                          parameters=[rb], output="screen"))
+                          parameters=[rb], output="screen", respawn=True, respawn_delay=2.0))
         nodes.append(Node(package="rosapi", executable="rosapi_node", name="rosapi", parameters=[common]))
     if a["web"] == "true":
         nodes.append(Node(package=beh, executable="web_server", additional_env=env, output="screen",

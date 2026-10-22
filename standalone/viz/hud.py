@@ -187,20 +187,40 @@ class Hud:
             return None
         return MAIN[0] + u, MAIN[1] + v, depth
 
+    def _occluded(self, cam, p) -> bool:
+        """Is the marker hidden behind world geometry from this camera? (ray test, world geoms only)"""
+        sim = self.r.sim
+        cid = sim.m.camera(cam).id
+        pos = sim.d.cam_xpos[cid].copy()
+        vec = np.asarray(p, float) - pos
+        dist = float(np.linalg.norm(vec))
+        gid = np.zeros(1, np.int32)
+        hit = mujoco.mj_ray(sim.m, sim.d, pos, vec / dist, np.array([1, 0, 0, 0, 0, 0], np.uint8), 1, -1, gid)
+        return 0 <= hit < dist - 0.35
+
     def _overlay_labels(self, d, snap, cam):
         st = snap["fsm"]
+        placed = []   # label boxes already drawn (simple de-overlap: push down)
         for m in snap["markers"]:
             pr = self._project(cam, (m.x, m.y, m.z + 0.28))
             if pr is None:
                 continue
             u, v, depth = pr
             col = marker_color(m)
-            txt = f"{m.label}  {m.frequency:.2f} Hz"
-            fnt = self.fb[18] if depth < 6 else self.fb[14]
+            hidden = self._occluded(cam, (m.x, m.y, m.z))
+            txt = f"{m.label}  {m.frequency:.2f} Hz" + ("  (behind)" if hidden else "")
+            fnt = self.fb[18] if depth < 6 and not hidden else self.fb[14]
             tw = d.textlength(txt, font=fnt)
             box = [u - tw / 2 - 8, v - 16, u + tw / 2 + 8, v + 12]
-            d.rounded_rectangle(box, 6, fill=(20, 20, 19, 200), outline=col + (255,), width=2)
-            d.text((u, v - 2), txt, font=fnt, fill=INK, anchor="mm")
+            for _ in range(6):
+                if not any(box[0] < b[2] and b[0] < box[2] and box[1] < b[3] and b[1] < box[3] for b in placed):
+                    break
+                box = [box[0], box[1] + 32, box[2], box[3] + 32]
+                v += 32
+            placed.append(box)
+            a = 110 if hidden else 255
+            d.rounded_rectangle(box, 6, fill=(20, 20, 19, 140 if hidden else 200), outline=col + (a,), width=2)
+            d.text((u, v - 2), txt, font=fnt, fill=INK + (a,), anchor="mm")
             if m.id == st.goal:
                 d.rounded_rectangle([box[0] - 4, box[1] - 4, box[2] + 4, box[3] + 4], 8, outline=(90, 240, 255, 255), width=3)
                 d.text((u, box[1] - 14), "GOAL", font=self.fb[14], fill=(90, 240, 255), anchor="mm")
@@ -381,7 +401,9 @@ class Hud:
             self._badge(d, x0 + w - 16, y0 + 56, "E-STOP LATCHED", anchor_right=True)
         d.text((x0 + w - 16, y0 + h - 18), f"sim time {snap['t']:6.1f} s", font=self.f[16], fill=MUTED, anchor="rm")
         if st.reason:
-            d.text((x0 + 16, y0 + h - 18), st.reason[:60], font=self.f[14], fill=MUTED, anchor="lm")
+            import re
+            reason = re.sub(r"(?<=goal |d at )(\d+)", lambda g: mk[int(g.group(1))].label if int(g.group(1)) in mk else g.group(1), st.reason)
+            d.text((x0 + 16, y0 + h - 18), reason[:60], font=self.f[14], fill=MUTED, anchor="lm")
 
     def _caption(self, d, snap):
         x0, y0, w, h = CAP

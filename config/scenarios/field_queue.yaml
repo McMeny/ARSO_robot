@@ -9,6 +9,7 @@ seed: 4
 snr: 1.0
 camera: chase
 start_pose: [0.0, -3.6, 1.571]
+ros: {duration: 110}
 events:
   - {t: 0, caption: "Robot wandering. The user looks at marker A…"}
   - {t: 4, gaze: 1, dur: 3.5, engagement: 1.0}

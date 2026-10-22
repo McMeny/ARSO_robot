@@ -339,7 +339,8 @@ class ScenarioRunner:
             a = self.rcfg["admittance"]
             k = pullback_scale(*self.force, a["pullback_threshold"], a["pullback_stop"])
             nav = nav.scaled(k)
-        self.mux.input("navigation", nav, t)
+        if self.nav_goal is not None:          # like Nav2: no goal -> no cmd_vel_nav messages -> mux source NONE
+            self.mux.input("navigation", nav, t)
         for e in self.active:
             if "teleop" in e:
                 self.mux.input("teleop", Twist(*e["teleop"]), t)

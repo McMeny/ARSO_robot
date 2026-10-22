@@ -1,0 +1,52 @@
+{
+  "scenario": "supermarket_queue",
+  "runtime": "ros_sim",
+  "robot": "walker",
+  "world": "supermarket",
+  "duration_s": 85.0,
+  "eeg": "SIMULATED",
+  "selections": [
+    {
+      "t": 6.16,
+      "id": 2,
+      "label": "B",
+      "correct": true
+    },
+    {
+      "t": 16.4,
+      "id": 3,
+      "label": "C",
+      "correct": true
+    }
+  ],
+  "correct_selections": 2,
+  "false_selections": 0,
+  "false_per_min_lookaround": null,
+  "arrivals": [
+    {
+      "t": 55.31,
+      "id": 2,
+      "label": "Bread"
+    }
+  ],
+  "path_length_m": 15.61,
+  "min_clearance_m": 0.091,
+  "collisions": 0,
+  "collision_monitor_activations": 4,
+  "mux_share": {
+    "NAVIGATION": 0.913,
+    "NONE": 0.087
+  },
+  "states_seen": [
+    "ASSIST",
+    "ENGAGED",
+    "ARRIVED",
+    "ENGAGED"
+  ],
+  "final_state": "ENGAGED",
+  "expectation_failures": [
+    "visited [2] != [2, 3]",
+    "final state ENGAGED != ASSIST"
+  ],
+  "passed": false
+}

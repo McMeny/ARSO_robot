@@ -1,0 +1,8 @@
+# docker compose -f deploy/docker/compose.yaml up        (host networking: rosbridge 9090, web 8443, LSL multicast)
+services:
+  eyesteer:
+    build: {context: ../.., dockerfile: deploy/docker/Dockerfile}
+    network_mode: host
+    privileged: true            # /dev/eyesteer_mcu, /dev/lidar, Bluetooth for the Muse
+    volumes: ["/dev:/dev", "${HOME}/.eyesteer:/root/.eyesteer", "${HOME}/maps:/root/maps"]
+    command: ["bash", "-c", "source deploy/env.sh && ros2 launch eyesteer_bringup real.launch.py eeg:=lsl map:=/root/maps/demo.yaml"]

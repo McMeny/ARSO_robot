@@ -45,6 +45,7 @@ class SyntheticEEG:
         self._artifact_until = -1.0
         self._blink_times: list[float] = []
         self.blink_rate_hz = 0.25      # ~15 blinks/min
+        self.eyes_closed = False       # eyes closed -> strong posterior alpha (preflight alpha test)
         self.motion_rate_hz = 0.02
         self._calibrate_pink()
 
@@ -77,7 +78,7 @@ class SyntheticEEG:
 
         attending = self._target is not None
         # alpha: strong when idle/eyes relaxed, suppressed when fixating a flicker
-        alpha_amp = 4.0 if not attending else 1.5
+        alpha_amp = 12.0 if self.eyes_closed else (4.0 if not attending else 1.5)
         for c in range(len(CHANNELS)):
             scale = 1.0 if c == 4 else 0.4
             out[:, c] += scale * alpha_amp * np.sin(2 * math.pi * 10.0 * t + self._alpha_phase[c])

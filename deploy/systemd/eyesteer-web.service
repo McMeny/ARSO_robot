@@ -1,0 +1,12 @@
+[Unit]
+Description=eyesteer HTTPS server for the WebXR headset app and the health dashboard
+After=network-online.target
+
+[Service]
+User=@USER@
+WorkingDirectory=@ROOT@
+ExecStart=/bin/bash -c 'source @ROOT@/deploy/env.sh && ros2 run eyesteer_behavior web_server'
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

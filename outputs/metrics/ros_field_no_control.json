@@ -1,0 +1,26 @@
+{
+  "scenario": "field_no_control",
+  "runtime": "ros_sim",
+  "robot": "field_robot",
+  "world": "field",
+  "duration_s": 95.0,
+  "eeg": "SIMULATED",
+  "selections": [],
+  "correct_selections": 0,
+  "false_selections": 0,
+  "false_per_min_lookaround": 0.0,
+  "arrivals": [],
+  "path_length_m": 33.71,
+  "min_clearance_m": 0.196,
+  "collisions": 0,
+  "collision_monitor_activations": 4,
+  "mux_share": {
+    "NAVIGATION": 1.0
+  },
+  "states_seen": [
+    "WANDER"
+  ],
+  "final_state": "WANDER",
+  "expectation_failures": [],
+  "passed": true
+}

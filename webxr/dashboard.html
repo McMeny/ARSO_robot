@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eye Steering Health</title>
+  <link rel="stylesheet" href="css/app.css">
+  <script src="vendor/roslib.min.js"></script>
+  <style>
+    #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; padding: 16px; }
+    .gate { background: var(--panel); border: 1px solid var(--grid); border-left: 6px solid var(--muted); border-radius: 10px; padding: 10px 12px; }
+    .gate h4 { margin: 0 0 4px; display: flex; justify-content: space-between; }
+    .lvl0 { border-left-color: var(--good); } .lvl1 { border-left-color: var(--warning); } .lvl2 { border-left-color: var(--critical); }
+    #lock { font-size: 22px; font-weight: 700; padding: 0 16px; }
+    table { border-collapse: collapse; margin: 0 16px; font-size: 14px; }
+    td, th { padding: 4px 10px; border-bottom: 1px solid var(--grid); text-align: left; }
+  </style>
+</head>
+<body>
+  <header id="topbar"><span class="brand">System health</span><span id="conn" class="pill bad">rosbridge: connecting…</span>
+    <span id="mode" class="pill">mode –</span><a class="link" href="index.html">Headset app</a></header>
+  <p id="lock">–</p>
+  <section id="grid"></section>
+  <h3 style="padding:0 16px">Robot</h3>
+  <table><tbody id="robot"></tbody></table>
+  <script type="module">
+    import { RosLink, defaultUrl } from "./js/ros.js";
+    const names = ["✓ OK", "! WARN", "✕ ERROR", "… STALE"];
+    const cfg = await fetch("config/system.json").then((r) => r.json());
+    const link = new RosLink(defaultUrl(location, cfg.rosbridge_port), {
+      onConnection: (ok) => { const c = document.getElementById("conn"); c.textContent = ok ? "rosbridge: connected" : "rosbridge: reconnecting…"; c.className = "pill " + (ok ? "good" : "bad"); },
+      onHealth: (h) => {
+        document.getElementById("mode").textContent = "mode " + h.mode;
+        document.getElementById("lock").textContent = h.motion_unlocked ? "Motion UNLOCKED: all required gates green" : "Motion LOCKED: waiting for the red gates below";
+        document.getElementById("grid").innerHTML = h.components.map((c) =>
+          `<div class="gate lvl${c.level}"><h4><span>${c.name}${c.required ? "" : " (optional)"}</span><span>${names[c.level]}</span></h4><div class="muted">${c.message}</div></div>`).join("");
+      },
+      onStatus: (s) => {
+        const rows = [["state", s.display], ["queue", s.queue_labels.join(", ") || "empty"], ["mux source", s.mux_source],
+          ["collision monitor", s.safety], ["e-stop", s.estop], ["dead-man lock", s.deadman_locked], ["EEG", s.eeg_source], ["reason", s.reason]];
+        document.getElementById("robot").innerHTML = rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join("");
+      },
+    });
+    window.eyesteerDashboard = { link };
+  </script>
+</body>
+</html>

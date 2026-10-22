@@ -1,0 +1,12 @@
+[Unit]
+Description=eyesteer rosbridge (wss://:9090) for the headset
+After=network-online.target
+
+[Service]
+User=@USER@
+WorkingDirectory=@ROOT@
+ExecStart=/bin/bash -c 'source @ROOT@/deploy/env.sh && ros2 run rosbridge_server rosbridge_websocket --ros-args -p ssl:=true -p certfile:=@ROOT@/deploy/certs/eyesteer.pem -p keyfile:=@ROOT@/deploy/certs/eyesteer.key'
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

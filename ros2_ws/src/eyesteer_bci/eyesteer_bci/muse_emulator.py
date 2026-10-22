@@ -65,7 +65,8 @@ def load_replay(path: str) -> np.ndarray:
 
 class MuseEmulator:
     def __init__(self, tool: str | None = None, mode: str = "synthetic", replay_file: str | None = None,
-                 snr: float | None = None, seed: int = 7, freqs: dict | None = None):
+                 snr: float | None = None, seed: int = 7, freqs: dict | None = None,
+                 source_id: str = "eyesteer-muse-emulator"):
         self.spec = stream_spec(tool)
         self.fs = self.spec["fs"]
         self.mode = mode
@@ -78,11 +79,12 @@ class MuseEmulator:
         self.engagement = 0.5
         self.fault = "ok"
         self.outlet = None
+        self.source_id = source_id
         self.running = False
         self.pushed = 0
 
     def open(self):
-        self.outlet = make_outlet(self.spec)
+        self.outlet = make_outlet(self.spec, self.source_id)
 
     def chunk(self, n: int) -> np.ndarray:
         if self.mode == "replay":
@@ -144,7 +146,8 @@ def main_ros():
     replay_file = node.declare_parameter("replay_file", "").value
     tool = node.declare_parameter("tool", "").value or None
     snr = node.declare_parameter("snr", -1.0).value
-    emu = MuseEmulator(tool, mode, replay_file or None, None if snr < 0 else snr, freqs=default_freqs())
+    sid = node.declare_parameter("source_id", "eyesteer-muse-emulator").value
+    emu = MuseEmulator(tool, mode, replay_file or None, None if snr < 0 else snr, freqs=default_freqs(), source_id=sid)
     latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL, reliability=ReliabilityPolicy.RELIABLE)
 
     def on_markers(m):
