@@ -63,9 +63,11 @@ class FirmwareCore:
         L.es_get_pwm.restype = ctypes.c_int32
         L.es_get_enc.argtypes = [ctypes.c_void_p, ctypes.c_int]
         L.es_get_enc.restype = ctypes.c_int32
+        L.es_set_feedforward.argtypes = [ctypes.c_void_p, ctypes.c_int32]
         c = consts
         L.es_init(self.buf, c["PID_KP"], c["PID_KD"], c["PID_KI"], c["PID_KO"], c["MAX_PWM"], c["MAX_COUNTS_PER_LOOP"],
                   c["MAX_ACCEL_COUNTS_PER_LOOP2"], c["WATCHDOG_MS"], c["BAUD_RATE"], self._robot)
+        L.es_set_feedforward(self.buf, int(c.get("FF_COUNTS_AT_MAX_PWM", 0)))
 
     def feed(self, ch: bytes, now_ms: int):
         if self.lib.es_feed_char(self.buf, ch, ctypes.c_uint32(now_ms & 0xFFFFFFFF)):
@@ -156,7 +158,7 @@ class McuEmulator:
         # motor + gearbox inertia between the PWM output and the (physics) wheel: a first-order lag.
         # Without it the PID's 30 Hz PWM steps hit MuJoCo's near-instant velocity actuator as torque
         # pulses and the wheels skid (odometry error in turns).
-        self.motor_tau = 0.08
+        self.motor_tau = 0.05
         self._w_target = [0.0, 0.0]
         self._w_out = [0.0, 0.0]
         self._last_service = None

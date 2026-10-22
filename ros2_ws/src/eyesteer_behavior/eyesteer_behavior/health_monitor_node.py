@@ -150,7 +150,7 @@ class HealthMonitor(Node):
                 probs.append(f"dropped frames {x.dropped_pct:.1f} %")
             if x.table_hash != self.table_hash:
                 probs.append("frequency table mismatch")
-            if self.mode != "sim" and (not x.calibrated or x.calibration_residual > 0.05):
+            if self.mode == "real" and (not x.calibrated or x.calibration_residual > 0.05):
                 probs.append("headset not calibrated to the map (residual > 5 cm)")
             if self.n_markers < 1:
                 probs.append("no markers placed")

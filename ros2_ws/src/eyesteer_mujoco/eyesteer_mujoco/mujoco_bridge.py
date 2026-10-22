@@ -128,13 +128,13 @@ class MujocoBridge(Node):
 
     def on_cmd_probe(self, m: Twist):
         moving = abs(m.linear.x) > 0.02 or abs(m.angular.z) > 0.05
-        if moving and self.resp_t0 is None and max(abs(w) for w in self.sim.wheel_velocities()) < 0.05:
+        if moving and self.resp_t0 is None and max(abs(w) for w in self.sim.wheel_velocities()) < 0.02:
             self.resp_t0 = time.time()
         elif not moving:
             self.resp_t0 = None
 
     def _probe_wheels(self):
-        if max(abs(w) for w in self.sim.wheel_velocities()) > 0.3:
+        if max(abs(w) for w in self.sim.wheel_velocities()) > 0.05:   # the wheel starts to respond (above noise)
             import json
             self.pub_lat.publish(String(data=json.dumps({"event": "wheel_response", "wall": time.time(),
                                                          "dt_ms": 1000 * (time.time() - self.resp_t0), "backend": self.backend})))
@@ -180,7 +180,9 @@ class MujocoBridge(Node):
 
     # ------------------------------------------------------------------ physics loop
     def _loop(self):
-        dt = 0.01
+        # 5 ms chunks: the HIL MCU emulator is serviced every chunk, so serial replies take <= 5 ms (a real MCU
+        # answers within a few ms); 10 ms chunks added ~20 ms per ros2_control cycle (read + write round trips).
+        dt = 0.005 if self.backend == "mujoco_hil" else 0.01
         t_lidar = 0.0
         t_pub = 0.0
         t_slow = 0.0

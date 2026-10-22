@@ -51,6 +51,8 @@ def main(argv=None) -> int:
     ap.add_argument("--pwm", type=int, default=70)
     ap.add_argument("--secs", type=float, default=1.5)
     ap.add_argument("--measure-cpr", action="store_true")
+    ap.add_argument("--measure-ff", action="store_true", help="counts per PID loop at max PWM (feed-forward constant)")
+    ap.add_argument("--pid-rate", type=float, default=50.0)
     a = ap.parse_args(argv)
     m = Mcu(a.device, a.baud)
     print("firmware:", m.cmd("v"))
@@ -58,6 +60,24 @@ def main(argv=None) -> int:
         m.cmd("r")
         input("Mark the LEFT wheel, turn it FORWARD exactly 10 revolutions by hand, then press Enter... ")
         print(f"left counts/rev = {m.enc()[0] / 10:.1f}  -> put this in hardware.yaml encoders.counts_per_rev")
+        return 0
+    if a.measure_ff:
+        pwm = 128
+        m.cmd("r")
+        t_end = time.time() + 2.0
+        while time.time() < t_end:
+            m.cmd(f"o {pwm} {pwm}")
+            time.sleep(0.05)
+        l0, r0 = m.enc()
+        t0 = time.time()
+        while time.time() - t0 < 2.0:
+            m.cmd(f"o {pwm} {pwm}")
+            time.sleep(0.05)
+        l1, r1 = m.enc()
+        dt = time.time() - t0
+        m.cmd("o 0 0")
+        per_loop = ((l1 - l0) + (r1 - r0)) / 2 / dt / a.pid_rate * (255 / pwm)
+        print(f"counts per PID loop at max PWM ~ {per_loop:.0f}  -> hardware.yaml encoders.ff_counts_per_loop_at_max_pwm")
         return 0
     ok = True
     for wheel, name in ((0, "LEFT"), (1, "RIGHT")):

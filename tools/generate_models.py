@@ -366,11 +366,13 @@ def controllers_yaml(r: dict, hw: dict) -> str:
     w = r["wheels"]
     cfg = {
         "controller_manager": {"ros__parameters": {
-            "update_rate": hw["mcu"]["pid_rate_hz"],
+            # 50 Hz command/read loop; diffdrive_arduino's loop_rate (= firmware PID rate, 30 Hz) only sets the
+            # units of 'm' (counts per PID loop), so the two rates are independent. 50 Hz cuts command latency.
+            "update_rate": 50,
             "diff_cont": {"type": "diff_drive_controller/DiffDriveController"},
             "joint_broad": {"type": "joint_state_broadcaster/JointStateBroadcaster"}}},
         "diff_cont": {"ros__parameters": {
-            "publish_rate": 30.0, "base_frame_id": "base_footprint", "odom_frame_id": "odom",
+            "publish_rate": 50.0, "base_frame_id": "base_footprint", "odom_frame_id": "odom",
             "left_wheel_names": ["left_wheel_joint"], "right_wheel_names": ["right_wheel_joint"],
             "wheel_separation": w["separation"], "wheel_radius": w["radius"],
             "use_stamped_vel": False, "enable_odom_tf": True, "cmd_vel_timeout": 0.5,
@@ -401,6 +403,7 @@ def firmware_header(r: dict, hw: dict) -> str:
          f"#define ENCODER_CPR {cpr}", f"#define PID_RATE_HZ {mcu['pid_rate_hz']}",
          f"#define BAUD_RATE {mcu['baud']}", f"#define WATCHDOG_MS {mcu['watchdog_ms']}",
          f"#define MAX_PWM {mcu['max_pwm']}",
+         f"#define FF_COUNTS_AT_MAX_PWM {hw['encoders'].get('ff_counts_per_loop_at_max_pwm') or max(1, round(max_counts_per_loop * 1.25))}",
          f"#define MAX_COUNTS_PER_LOOP {max(1, round(max_counts_per_loop))}",
          f"#define MAX_ACCEL_COUNTS_PER_LOOP2 {max(1, round(lim['a_max'] * counts_per_m / mcu['pid_rate_hz'] ** 2 * 4))}",
          f"#define PID_KP {r['pid']['kp']}", f"#define PID_KD {r['pid']['kd']}",

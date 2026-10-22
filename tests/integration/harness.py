@@ -79,6 +79,18 @@ def headset_client(url_extra="", emulate_refresh=90, headless=True):
     cert = (ROOT / "deploy/certs/eyesteer.pem").exists()
     scheme, ws = ("https", "wss") if cert else ("http", "ws")
     url = f"{scheme}://localhost:8443/index.html?rosbridge={ws}://localhost:9090&emulate_refresh={emulate_refresh}{url_extra}"
+    import ssl
+    import urllib.request
+    ctx = ssl._create_unverified_context()
+    t0 = time.time()
+    while True:                       # wait for the web server of the freshly launched stack
+        try:
+            urllib.request.urlopen(f"{scheme}://localhost:8443/config/frequencies.json", context=ctx, timeout=2).read()
+            break
+        except Exception:
+            if time.time() - t0 > 180:
+                raise TimeoutError("web server did not come up on :8443")
+            time.sleep(1.0)
     with sync_playwright() as p:
         b = p.chromium.launch(headless=headless, args=["--ignore-certificate-errors"])
         ctx = b.new_context(ignore_https_errors=True, viewport={"width": 1400, "height": 900})

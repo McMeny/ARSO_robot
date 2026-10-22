@@ -79,6 +79,7 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(PIN_RIGHT_ENC_A), isr_right, CHANGE);
   es_init(&S, PID_KP, PID_KD, PID_KI, PID_KO, MAX_PWM, MAX_COUNTS_PER_LOOP, MAX_ACCEL_COUNTS_PER_LOOP2,
           WATCHDOG_MS, BAUD_RATE, ROBOT_NAME);
+  es_set_feedforward(&S, FF_COUNTS_AT_MAX_PWM);
 #if IS_WALKER
   pinMode(PIN_GRIP, INPUT_PULLUP);
   pinMode(PIN_HX_LEFT_DOUT, INPUT);

@@ -26,7 +26,7 @@ mcu:
   usb_vid: "2341"             # Arduino Mega 2560 R3 (genuine). CH340 clones: 1a86 / 7523. Find with: udevadm info -a -n /dev/ttyACM0 | grep idVendor
   usb_pid: "0042"
   baud: 57600                 # diffdrive_arduino default (ROSArduinoBridge protocol)
-  pid_rate_hz: 30             # firmware PID loop; MUST equal ros2_control loop_rate (counts-per-loop units)
+  pid_rate_hz: 50             # firmware PID loop; MUST equal ros2_control loop_rate (counts-per-loop units). 50 Hz: < 100 ms command-to-wheel latency
   serial_timeout_ms: 1000
   watchdog_ms: 200            # D9: no valid command for this long -> motors stop
   max_pwm: 255
@@ -46,6 +46,9 @@ motor_driver:
 
 encoders:
   counts_per_rev: 1320        # MEASURE ON THE REAL ROBOT (motor_test.py --measure-cpr)
+  # speed feed-forward: encoder counts per PID loop at max PWM, wheels off the ground.
+  # MEASURE ON THE REAL ROBOT (motor_test.py --measure-ff); null = estimate (1.25 x the speed limit).
+  ff_counts_per_loop_at_max_pwm: null
 
 lidar:
   model: rplidar_c1           # rplidar_a1 | rplidar_a2 | rplidar_c1

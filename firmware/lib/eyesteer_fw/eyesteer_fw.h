@@ -18,6 +18,7 @@
 //   "h\r"          -> "H <force_left_N> <force_right_N> <grip>\r\n"   (walker build; zeros otherwise)
 //   "x\r"          -> "OK\r\n" clears a latched e-stop if the button is released, else "ESTOP\r\n"
 //   "v\r"          -> "V eyesteer <robot> <version>\r\n"
+//   "f <counts>\r" -> "OK\r\n" set the feed-forward constant (counts per loop at max PWM; 0 = off)
 #pragma once
 #include <stdint.h>
 
@@ -45,6 +46,7 @@ typedef struct {
   int32_t max_pwm;
   int32_t max_counts;
   int32_t max_accel;
+  int32_t ff_counts;    // counts per loop at max PWM (speed feed-forward); 0 = off
   uint32_t watchdog_ms;
   uint32_t last_cmd_ms;
   uint8_t moving;
@@ -72,6 +74,9 @@ void es_add_encoder(es_state_t *s, int32_t dl, int32_t dr);
 // One PID tick at PID_RATE_HZ. Updates s->w[i].output (PWM). Applies watchdog + e-stop.
 void es_pid_step(es_state_t *s, uint32_t now_ms);
 void es_set_estop_input(es_state_t *s, uint8_t pressed);
+// Speed feed-forward: PWM_ff = target * max_pwm / ff_counts (counts per PID loop at max PWM, measured
+// with tools/motor_test.py --measure-ff). The PID then only corrects the remainder.
+void es_set_feedforward(es_state_t *s, int32_t ff_counts);
 void es_set_walker_sensors(es_state_t *s, float force_l, float force_r, uint8_t grip);
 int32_t es_get_pwm(const es_state_t *s, int wheel);
 int32_t es_get_enc(const es_state_t *s, int wheel);

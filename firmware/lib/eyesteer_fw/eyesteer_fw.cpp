@@ -140,6 +140,11 @@ static void exec_line(es_state_t *s, uint32_t now_ms) {
       reset_pid(s);
       respond(s, "OK");
       break;
+    case 'f':
+      if (parse_two(args, &a, &b) < 1 || a < 0) { respond(s, "Invalid Command"); break; }
+      s->ff_counts = (int32_t)a;
+      respond(s, "OK");
+      break;
     case 'v':
       snprintf(buf, sizeof(buf), "V eyesteer %s %s", s->robot ? s->robot : "?", FW_VERSION);
       respond(s, buf);
@@ -184,6 +189,8 @@ void es_set_estop_input(es_state_t *s, uint8_t pressed) {
   }
 }
 
+void es_set_feedforward(es_state_t *s, int32_t ff_counts) { s->ff_counts = ff_counts > 0 ? ff_counts : 0; }
+
 void es_set_walker_sensors(es_state_t *s, float force_l, float force_r, uint8_t grip) {
   s->force_l = force_l;
   s->force_r = force_r;
@@ -219,13 +226,18 @@ void es_pid_step(es_state_t *s, uint32_t now_ms) {
     // every loop, so Kp*err < Ko (e.g. a 1-count error with Kp 30 / Ko 50) never moves the output and a
     // slow command (a slow in-place turn) is ignored forever.
     int32_t err = w->ramped - input;
+    int32_t out;
     int32_t acc = w->acc + s->kp * err - s->kd * (input - w->prev_input) + w->iterm;
     int32_t lim = s->max_pwm * s->ko;
     if (acc >= lim) acc = lim;
     else if (acc <= -lim) acc = -lim;
     else w->iterm += s->ki * err;
     w->acc = acc;
-    w->output = acc / s->ko;
+    int32_t ff = s->ff_counts > 0 ? w->ramped * s->max_pwm / s->ff_counts : 0;
+    out = ff + acc / s->ko;
+    if (out > s->max_pwm) out = s->max_pwm;
+    else if (out < -s->max_pwm) out = -s->max_pwm;
+    w->output = out;
     w->prev_input = input;
   }
   if (s->w[0].target == 0 && s->w[1].target == 0 && s->w[0].ramped == 0 && s->w[1].ramped == 0) {

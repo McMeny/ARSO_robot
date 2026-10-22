@@ -116,9 +116,12 @@ class ModeManagerNode(Node):
         self.fsm.set_markers(list(self.markers), [i for i, mk in self.markers.items() if mk.cancel])
 
     def on_selection(self, m: Selection):
-        self.lat["selection"] = time.time()
+        t_sel = time.time()
         self.event("selection", marker=m.marker_id, label=m.label)
-        self.run_cmds(self.fsm.on_selection(m.marker_id, self.now()))
+        cmds = self.fsm.on_selection(m.marker_id, self.now())
+        if any(c[0] == "send_goal" for c in cmds):   # only selections that start a goal (not queued ones) are timed
+            self.lat["selection"] = t_sel
+        self.run_cmds(cmds)
 
     # ------------------------------------------------------------------ latency instrumentation (Section 24.7)
     def event(self, name, **kw):

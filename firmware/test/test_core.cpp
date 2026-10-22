@@ -92,6 +92,19 @@ static void test_small_command_moves() {
   CHECK(moved >= 45 && es_get_pwm(&s, 0) > 0);
 }
 
+static void test_feedforward_fast_start() {
+  // with feed-forward the wheel moves in the first PID loop after the command
+  es_state_t s; init(&s);
+  es_set_feedforward(&s, 50);              // the test motor: 0.12 counts per PWM unit -> ~30 counts at 255
+  Motor m = {0};
+  send(&s, "m 4 4\r", 0);
+  es_pid_step(&s, 20);
+  CHECK(es_get_pwm(&s, 0) >= 15);          // ff alone: 4 * 255 / 50 = 20
+  int32_t d = motor_step(&m, es_get_pwm(&s, 0));
+  CHECK(d > 0);
+  CHECK(strcmp(send(&s, "f 60\r", 30), "OK\r\n") == 0 && s.ff_counts == 60);
+}
+
 static void test_watchdog() {
   es_state_t s; init(&s);
   Motor m = {0};
@@ -148,6 +161,7 @@ int main() {
   test_parser();
   test_pid_step_response();
   test_small_command_moves();
+  test_feedforward_fast_start();
   test_watchdog();
   test_estop_latch();
   test_walker_extension();
