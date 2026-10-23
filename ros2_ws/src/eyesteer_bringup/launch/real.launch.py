@@ -1,6 +1,9 @@
 """Real robot on the Jetson: the identical upper stack with real drivers.
 
 ros2 launch eyesteer_bringup real.launch.py robot:=walker eeg:=lsl|synthetic|replay map:=/path/to/map.yaml
+  demo:=true  no headset, no Muse: the real robot driven from a laptop browser's 2D map (click a marker = look
+              at it) with SIMULATED EEG through the real decoder; forces eeg:=synthetic and require_headset:=false.
+              Every safety layer is unchanged (health gates, collision monitor, watchdogs, e-stop, dead-man).
   base (config/hardware.yaml base.type):
     custom_arduino_diffdrive  mcu_bridge (/dev/eyesteer_mcu) + ros2_control + diffdrive_arduino
     cmd_vel_base              the vendor driver provides /odom + odom->base_footprint and consumes /cmd_vel
@@ -20,11 +23,15 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 ARGS = {"robot": "", "eeg": "lsl", "map": "", "world": "demo", "rviz": "false", "slam": "false",
-        "require_headset": "true", "record": "false", "user": "default", "replay_file": "", "start_pose": "0,0,0"}
+        "require_headset": "true", "record": "false", "user": "default", "replay_file": "", "start_pose": "0,0,0",
+        "demo": "false"}
 
 
 def setup(context):
     a = {k: LaunchConfiguration(k).perform(context) for k in ARGS}
+    if a["demo"] == "true":                     # no headset, no Muse: see the module docstring
+        a["require_headset"] = "false"
+        a["eeg"] = a["eeg"] if a["eeg"] == "replay" else "synthetic"
     bring = get_package_share_directory("eyesteer_bringup")
     desc = get_package_share_directory("eyesteer_description")
     root = open(os.path.join(bring, "eyesteer_root.txt")).read().strip()
@@ -56,7 +63,7 @@ def setup(context):
         launch_arguments={"robot": robot, "world": a["world"], "map": a["map"], "eeg": a["eeg"], "use_sim_time": "false",
                           "nav_variant": "real", "mode": "real", "slam": a["slam"], "start_pose": a["start_pose"],
                           "require_headset": a["require_headset"], "record": a["record"], "user": a["user"],
-                          "replay_file": a["replay_file"]}.items())
+                          "replay_file": a["replay_file"], "demo": a["demo"]}.items())
     acts.append(TimerAction(period=6.0, actions=[stack]))
     if a["rviz"] == "true":
         acts.append(Node(package="rviz2", executable="rviz2", arguments=["-d", os.path.join(desc, "rviz", "eyesteer.rviz")]))

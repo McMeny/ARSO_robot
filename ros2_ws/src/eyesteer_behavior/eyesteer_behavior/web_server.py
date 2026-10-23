@@ -24,11 +24,11 @@ from eyesteer_core import config
 ROOT = _root.ROOT
 
 
-def system_json(robot: str, eeg: str, mode: str) -> dict:
+def system_json(robot: str, eeg: str, mode: str, demo: bool = False) -> dict:
     hw = config.hardware()
     r = config.robot(robot)
     return {"robot": robot, "idle_mode": r["idle_mode"], "refresh_hz": hw["headset"]["refresh_hz"],
-            "rosbridge_port": hw["headset"]["rosbridge_port"], "eeg": eeg, "mode": mode,
+            "rosbridge_port": hw["headset"]["rosbridge_port"], "eeg": eeg, "mode": mode, "demo": demo,
             "eeg_label": {"synthetic": "SIMULATED EEG", "replay": "REPLAYED EEG"}.get(eeg, "REAL EEG"),
             "decals": r["calibration_decals"], "marker_size": 0.3,
             "presets": ["Beans", "Bread", "Milk", "Produce", "Checkout", "Door", "Window", "Table", "A", "B", "C", "D", "E"]}
@@ -64,8 +64,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         pass
 
 
-def serve(port: int, cert: str | None, key: str | None, robot: str, eeg: str, mode: str, block: bool = True):
-    Handler.extra = system_json(robot, eeg, mode)
+def serve(port: int, cert: str | None, key: str | None, robot: str, eeg: str, mode: str, block: bool = True,
+          demo: bool = False):
+    Handler.extra = system_json(robot, eeg, mode, demo)
     handler = functools.partial(Handler, directory=str(ROOT / "webxr"))
     httpd = http.server.ThreadingHTTPServer(("0.0.0.0", port), handler)
     scheme = "http"
@@ -95,7 +96,8 @@ def main(argv=None):
         robot = n.declare_parameter("robot", "field_robot").value
         eeg = n.declare_parameter("eeg", "synthetic").value
         mode = n.declare_parameter("mode", "sim").value
-        serve(port, cert, key, robot, eeg, mode, block=False)
+        demo = n.declare_parameter("demo", False).value      # desktop demo: no headset, no on-screen flicker
+        serve(port, cert, key, robot, eeg, mode, block=False, demo=demo)
         rclpy.spin(n)
     except ImportError:
         ap = argparse.ArgumentParser()

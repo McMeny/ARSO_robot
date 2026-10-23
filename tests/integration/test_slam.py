@@ -60,6 +60,10 @@ def test_slam_mapping_matches_world():
     ref_img, ref_meta = read_pgm(ROOT / "ros2_ws/src/eyesteer_bringup/maps/field")
     s_pts = occupied_world_points(slam_img, slam_meta)
     assert len(s_pts) > 300, "SLAM map nearly empty"
+    # the SLAM map frame is the robot's start pose (that is where mapping began): express it in the world
+    sx, sy, syaw = yaml.safe_load((ROOT / "config/worlds/field.yaml").read_text())["start_pose"]
+    c, s = np.cos(syaw), np.sin(syaw)
+    s_pts = np.stack([sx + c * s_pts[:, 0] - s * s_pts[:, 1], sy + s * s_pts[:, 0] + c * s_pts[:, 1]], 1)
     # distance from each SLAM-occupied cell to the nearest ground-truth occupied cell
     ref_occ = ref_img < 50
     dist = distance_transform_edt(~ref_occ) * ref_meta["resolution"]

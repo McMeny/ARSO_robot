@@ -37,6 +37,9 @@ def main(argv=None) -> int:
     ap.add_argument("--backend", default="mujoco_hil")
     ap.add_argument("--map", default="")
     ap.add_argument("--no-launch", action="store_true", help="only watch the gates of an already running system")
+    ap.add_argument("--desktop", action="store_true",
+                    help="no headset, no Muse: a browser's 2D map is the headset (click a marker = look at it), "
+                         "SIMULATED EEG through the real decoder, no on-screen flicker")
     a = ap.parse_args(argv)
     proc = None
     if not a.no_launch:
@@ -46,6 +49,8 @@ def main(argv=None) -> int:
         else:
             cmd = ["ros2", "launch", "eyesteer_bringup", "real.launch.py", f"robot:={a.robot}", f"eeg:={a.eeg}",
                    "require_headset:=true"] + ([f"map:={a.map}"] if a.map else [])
+        if a.desktop:                              # the launch files force eeg:=synthetic + require_headset:=false
+            cmd.append("demo:=true")
         print("[demo] launching:", " ".join(cmd))
         proc = subprocess.Popen(cmd, stdout=open("/tmp/eyesteer_demo.log", "w"), stderr=subprocess.STDOUT)
 
@@ -85,6 +90,12 @@ def main(argv=None) -> int:
             h = state["h"]
             if h and h.motion_unlocked:
                 print(f"[demo] ALL REQUIRED GATES GREEN: motion UNLOCKED (+{time.time() - t0:.0f} s). Dashboard: https://<host>:8443/dashboard.html")
+                if a.desktop:
+                    where = "localhost" if a.mode == "sim" else "<jetson>"
+                    print(f"[demo] DESKTOP DEMO: open https://{where}:8443 in a browser"
+                          + ("" if a.mode == "sim" else "; 'Place markers' tab: click on the map to place them") +
+                          "; 'Run' tab: click a marker or press its number to look at it (C = CANCEL, 0/Esc = look away, "
+                          "Space = e-stop). EEG is SIMULATED.")
                 break
         last = None
         while not stop["v"]:   # keep watching: report any gate that goes red during the run

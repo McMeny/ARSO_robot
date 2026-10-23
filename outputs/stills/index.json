@@ -44,27 +44,27 @@
   ],
   "supermarket_walker": [
     {
-      "file": "outputs\\stills\\S5_supermarket_walker_assist.png",
+      "file": "outputs/stills/S5_supermarket_walker_assist.png",
       "t": 2.0,
       "caption": "ASSIST at the entrance; markers are virtual MR overlays (not physical objects)."
     },
     {
-      "file": "outputs\\stills\\S5_supermarket_walker_shopper.png",
+      "file": "outputs/stills/S5_supermarket_walker_shopper.png",
       "t": 9.5,
       "caption": "Shopper crossing: collision monitor active (user-inclusive footprint)."
     },
     {
-      "file": "outputs\\stills\\S5_supermarket_walker_pullback.png",
+      "file": "outputs/stills/S5_supermarket_walker_pullback.png",
       "t": 21.0,
       "caption": "User pulls back: navigation scaled down, the user wins."
     },
     {
-      "file": "outputs\\stills\\S5_supermarket_walker_deadman.png",
+      "file": "outputs/stills/S5_supermarket_walker_deadman.png",
       "t": 25.5,
       "caption": "Grip released: dead-man lock, walker stopped."
     },
     {
-      "file": "outputs\\stills\\S5_supermarket_walker_arrived_pov.png",
+      "file": "outputs/stills/S5_supermarket_walker_arrived_pov.png",
       "t": 40.0,
       "caption": "User's view at the Beans: MR marker overlay, walker in ASSIST."
     }

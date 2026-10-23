@@ -73,6 +73,29 @@ s = serial.Serial(sys.argv[1], 57600, timeout=1); time.sleep(2.0)
 def c(x): s.write((x + "\r").encode()); return s.readline().decode().strip()
 c("r"); time.sleep(5); print("    encoder counts after turning:", c("e"))
 PY
+      echo "    Press the e-stop button, then release it (10 s)..."
+      out=$(python3 - "${MCU_DEV}" <<'PY'
+import sys, time, serial
+s = serial.Serial(sys.argv[1], 57600, timeout=1); time.sleep(2.0); s.reset_input_buffer()
+def c(x): s.reset_input_buffer(); s.write((x + "\r").encode()); return s.readline().decode().strip()
+c("x")
+pressed = released_latched = False
+t0 = time.time()
+while time.time() - t0 < 10:
+    f = c("s").split()                      # S <latched> <input> <watchdog> <moving>
+    if len(f) == 5:
+        pressed = pressed or f[2] == "1"
+        if pressed and f[2] == "0":
+            released_latched = f[1] == "1"   # latch must survive the release
+            break
+    time.sleep(0.05)
+f = c("x"); cleared = c("s").split()[1:2] == ["0"]
+print(f"pressed={pressed} latched_after_release={released_latched} cleared_by_reset={cleared}")
+print("OK" if pressed and released_latched and cleared else "BAD")
+PY
+)
+      while IFS= read -r l; do echo "    ${l}"; done <<< "${out}"
+      if echo "${out}" | tail -1 | grep -q OK; then record "estop" PASS "button seen, latch held after release, cleared by reset"; else record "estop" FAIL "e-stop input not seen or latch not held (wiring? pins.<board>.estop in hardware.yaml)"; fi
     fi
   else
     record "mcu" FAIL "${MCU_DEV} not found (udev rule? cable? see DEPLOY.md)"

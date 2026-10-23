@@ -7,52 +7,46 @@
   "eeg": "SIMULATED",
   "selections": [
     {
-      "t": 6.47,
+      "t": 6.58,
       "id": 1,
       "label": "A",
       "correct": true
     },
     {
-      "t": 8.43,
-      "id": 1,
-      "label": "A",
-      "correct": true
-    },
-    {
-      "t": 17.19,
+      "t": 17.57,
       "id": 4,
       "label": "D",
       "correct": true
     }
   ],
-  "correct_selections": 3,
+  "correct_selections": 2,
   "false_selections": 0,
   "false_per_min_lookaround": null,
   "arrivals": [
     {
-      "t": 39.0,
+      "t": 25.61,
       "id": 1,
       "label": "A",
-      "time_to_goal_s": 32.37
+      "time_to_goal_s": 18.93
     },
     {
-      "t": 53.89,
+      "t": 46.7,
       "id": 4,
       "label": "D",
-      "time_to_goal_s": 13.33
+      "time_to_goal_s": 19.49
     }
   ],
   "detection_latency_s": [
-    2.47,
-    2.19
+    2.58,
+    2.57
   ],
-  "path_length_m": 35.09,
-  "min_clearance_m": 0.091,
+  "path_length_m": 34.44,
+  "min_clearance_m": 0.151,
   "collisions": 0,
-  "collision_monitor_activations": 3,
+  "collision_monitor_activations": 6,
   "mux_share": {
-    "NAVIGATION": 0.97,
-    "NONE": 0.03
+    "NAVIGATION": 0.971,
+    "NONE": 0.029
   },
   "states_seen": [
     "WANDER",

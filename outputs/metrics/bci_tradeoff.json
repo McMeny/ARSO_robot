@@ -4,142 +4,142 @@
     {
       "theta": 0.25,
       "N": 2,
-      "accuracy": 1.0,
-      "false_per_min": 6.225211240141431,
-      "latency_s": 1.97705078125
+      "accuracy": 0.975,
+      "false_per_min": 3.21031839202547,
+      "latency_s": 2.08935546875
     },
     {
       "theta": 0.25,
       "N": 3,
       "accuracy": 0.975,
-      "false_per_min": 2.2620768190313894,
-      "latency_s": 2.18505859375
+      "false_per_min": 0.9447074141767311,
+      "latency_s": 2.3505859375
     },
     {
       "theta": 0.25,
       "N": 4,
       "accuracy": 0.975,
-      "false_per_min": 1.1298113562258025,
-      "latency_s": 2.419921875
+      "false_per_min": 0.3783532873027562,
+      "latency_s": 2.560546875
     },
     {
       "theta": 0.25,
       "N": 5,
       "accuracy": 0.975,
-      "false_per_min": 0.47011821213246163,
-      "latency_s": 2.619140625
+      "false_per_min": 0.09367374204766125,
+      "latency_s": 2.759765625
     },
     {
       "theta": 0.25,
       "N": 6,
       "accuracy": 0.975,
-      "false_per_min": 0.28277072803713915,
-      "latency_s": 2.818359375
+      "false_per_min": 0.0,
+      "latency_s": 2.958984375
     },
     {
       "theta": 0.3,
       "N": 2,
-      "accuracy": 1.0,
-      "false_per_min": 3.1139231619601557,
-      "latency_s": 2.03564453125
+      "accuracy": 0.975,
+      "false_per_min": 1.9849973876190794,
+      "latency_s": 2.0927734375
     },
     {
       "theta": 0.3,
       "N": 3,
       "accuracy": 0.975,
-      "false_per_min": 0.8508743568052695,
-      "latency_s": 2.24560546875
+      "false_per_min": 0.47202702935041746,
+      "latency_s": 2.3505859375
     },
     {
       "theta": 0.3,
       "N": 4,
       "accuracy": 0.975,
-      "false_per_min": 0.37819397197895577,
-      "latency_s": 2.48046875
+      "false_per_min": 0.18909698598947788,
+      "latency_s": 2.560546875
     },
     {
       "theta": 0.3,
       "N": 5,
       "accuracy": 0.975,
-      "false_per_min": 0.1873474840953225,
-      "latency_s": 2.6796875
+      "false_per_min": 0.09367374204766125,
+      "latency_s": 2.759765625
     },
     {
       "theta": 0.3,
       "N": 6,
       "accuracy": 0.975,
       "false_per_min": 0.0,
-      "latency_s": 2.87890625
+      "latency_s": 2.958984375
     },
     {
       "theta": 0.35,
       "N": 2,
-      "accuracy": 1.0,
-      "false_per_min": 0.6635268727099469,
-      "latency_s": 2.18310546875
+      "accuracy": 0.975,
+      "false_per_min": 0.5691997751863895,
+      "latency_s": 2.22021484375
     },
     {
       "theta": 0.35,
       "N": 3,
       "accuracy": 0.975,
       "false_per_min": 0.0938330573714617,
-      "latency_s": 2.42138671875
+      "latency_s": 2.4638671875
     },
     {
       "theta": 0.35,
       "N": 4,
       "accuracy": 0.975,
       "false_per_min": 0.0,
-      "latency_s": 2.63134765625
+      "latency_s": 2.673828125
     },
     {
       "theta": 0.35,
       "N": 5,
       "accuracy": 0.975,
       "false_per_min": 0.0,
-      "latency_s": 2.83056640625
+      "latency_s": 2.873046875
     },
     {
       "theta": 0.35,
       "N": 6,
       "accuracy": 0.9249999999999999,
       "false_per_min": 0.0,
-      "latency_s": 3.02099609375
+      "latency_s": 3.04931640625
     },
     {
       "theta": 0.4,
       "N": 2,
-      "accuracy": 0.975,
+      "accuracy": 0.95,
       "false_per_min": 0.0,
-      "latency_s": 2.36083984375
+      "latency_s": 2.37890625
     },
     {
       "theta": 0.4,
       "N": 3,
       "accuracy": 0.95,
       "false_per_min": 0.0,
-      "latency_s": 2.57958984375
+      "latency_s": 2.59033203125
     },
     {
       "theta": 0.4,
       "N": 4,
       "accuracy": 0.95,
       "false_per_min": 0.0,
-      "latency_s": 2.77880859375
+      "latency_s": 2.78955078125
     },
     {
       "theta": 0.4,
       "N": 5,
       "accuracy": 0.95,
       "false_per_min": 0.0,
-      "latency_s": 3.0048828125
+      "latency_s": 3.015625
     },
     {
       "theta": 0.4,
       "N": 6,
       "accuracy": 0.9249999999999999,
       "false_per_min": 0.0,
-      "latency_s": 3.234375
+      "latency_s": 3.2451171875
     },
     {
       "theta": 0.45,
@@ -217,141 +217,141 @@
       "theta": 0.25,
       "N": 2,
       "accuracy": 1.0,
-      "false_per_min": 6.037653191512575,
-      "latency_s": 1.58544921875
+      "false_per_min": 3.4935831602147047,
+      "latency_s": 1.6533203125
     },
     {
       "theta": 0.25,
       "N": 3,
       "accuracy": 1.0,
-      "false_per_min": 1.977999380042458,
-      "latency_s": 1.78466796875
+      "false_per_min": 1.0383811562243925,
+      "latency_s": 1.8525390625
     },
     {
       "theta": 0.25,
       "N": 4,
       "accuracy": 1.0,
-      "false_per_min": 1.3173181556449254,
-      "latency_s": 1.98388671875
+      "false_per_min": 0.47202702935041746,
+      "latency_s": 2.0517578125
     },
     {
       "theta": 0.25,
       "N": 5,
       "accuracy": 1.0,
-      "false_per_min": 0.47011821213246163,
-      "latency_s": 2.18310546875
+      "false_per_min": 0.18909698598947788,
+      "latency_s": 2.2509765625
     },
     {
       "theta": 0.25,
       "N": 6,
       "accuracy": 1.0,
-      "false_per_min": 0.28277072803713915,
-      "latency_s": 2.38232421875
+      "false_per_min": 0.0,
+      "latency_s": 2.4501953125
     },
     {
       "theta": 0.3,
       "N": 2,
       "accuracy": 1.0,
-      "false_per_min": 3.3988861828338135,
-      "latency_s": 1.58544921875
+      "false_per_min": 2.173935058284757,
+      "latency_s": 1.6533203125
     },
     {
       "theta": 0.3,
       "N": 3,
       "accuracy": 1.0,
-      "false_per_min": 1.0377278007484962,
-      "latency_s": 1.78466796875
+      "false_per_min": 0.7549570727113569,
+      "latency_s": 1.8525390625
     },
     {
       "theta": 0.3,
       "N": 4,
       "accuracy": 1.0,
-      "false_per_min": 0.7532075708172017,
-      "latency_s": 1.98388671875
+      "false_per_min": 0.37660378540860084,
+      "latency_s": 2.0517578125
     },
     {
       "theta": 0.3,
       "N": 5,
-      "accuracy": 1.0,
-      "false_per_min": 0.28102122614298375,
-      "latency_s": 2.18310546875
-    },
-    {
-      "theta": 0.3,
-      "N": 6,
       "accuracy": 1.0,
       "false_per_min": 0.09367374204766125,
-      "latency_s": 2.38232421875
+      "latency_s": 2.2509765625
+    },
+    {
+      "theta": 0.3,
+      "N": 6,
+      "accuracy": 1.0,
+      "false_per_min": 0.0,
+      "latency_s": 2.4501953125
     },
     {
       "theta": 0.35,
       "N": 2,
       "accuracy": 1.0,
-      "false_per_min": 0.9445480988529308,
-      "latency_s": 1.67919921875
+      "false_per_min": 0.8502210013293733,
+      "latency_s": 1.697265625
     },
     {
       "theta": 0.35,
       "N": 3,
       "accuracy": 1.0,
       "false_per_min": 0.2829300433609396,
-      "latency_s": 1.87841796875
+      "latency_s": 1.896484375
     },
     {
       "theta": 0.35,
       "N": 4,
       "accuracy": 1.0,
-      "false_per_min": 0.2829300433609396,
-      "latency_s": 2.07763671875
+      "false_per_min": 0.18909698598947788,
+      "latency_s": 2.095703125
     },
     {
       "theta": 0.35,
       "N": 5,
       "accuracy": 1.0,
       "false_per_min": 0.0,
-      "latency_s": 2.27685546875
+      "latency_s": 2.294921875
     },
     {
       "theta": 0.35,
       "N": 6,
       "accuracy": 1.0,
       "false_per_min": 0.0,
-      "latency_s": 2.47607421875
+      "latency_s": 2.494140625
     },
     {
       "theta": 0.4,
       "N": 2,
       "accuracy": 1.0,
       "false_per_min": 0.284679545255095,
-      "latency_s": 1.7724609375
+      "latency_s": 1.81005859375
     },
     {
       "theta": 0.4,
       "N": 3,
       "accuracy": 1.0,
       "false_per_min": 0.0,
-      "latency_s": 1.9716796875
+      "latency_s": 2.00927734375
     },
     {
       "theta": 0.4,
       "N": 4,
       "accuracy": 1.0,
       "false_per_min": 0.0,
-      "latency_s": 2.1708984375
+      "latency_s": 2.20849609375
     },
     {
       "theta": 0.4,
       "N": 5,
       "accuracy": 1.0,
       "false_per_min": 0.0,
-      "latency_s": 2.3701171875
+      "latency_s": 2.40771484375
     },
     {
       "theta": 0.4,
       "N": 6,
       "accuracy": 1.0,
       "false_per_min": 0.0,
-      "latency_s": 2.5693359375
+      "latency_s": 2.60693359375
     },
     {
       "theta": 0.45,
@@ -429,6 +429,6 @@
     "N": 3,
     "accuracy": 0.95,
     "false_per_min": 0.0,
-    "latency_s": 2.57958984375
+    "latency_s": 2.59033203125
   }
 }

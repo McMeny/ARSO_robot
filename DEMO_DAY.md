@@ -52,6 +52,26 @@ make demo-real robot=walker                 # = real.launch.py + gated startup; 
 6. **Full run** at reduced speed (`nav2_real`: 0.3 m/s), then the field-robot WANDER demo or the walker demo,
    **without a person on the walker first**, then with Steve holding the handles (spotter beside him).
 
+## Fallback: no headset, no Muse (desktop demo)
+For a dead Quest battery, no Muse, an audience member who should not see flicker, or a quick show from a laptop.
+The browser's 2D map stands in for the headset, and nothing flickers on screen.
+- **Simulation:** `make demo-desktop world=supermarket robot=walker` (or `world=field robot=field_robot`), then open
+  `https://localhost:8443`.
+- **Real robot:** `make demo-real-desktop robot=walker` on the Jetson, then on a laptop open `https://eyesteer.local:8443`.
+  - Set the robot's pose ("2D Pose Estimate" in RViz) so the localization gate turns green.
+  - In the **Place markers** tab, click on the map where each target is.
+- **Run tab:**
+  - Click a marker, or press its number, to "look" at it. Hold for ~2.5 s and the decoder selects it.
+  - `C` looks at CANCEL. `0` or `Esc` looks away. `Space` is an e-stop.
+- **No ROS at all** (any laptop with Python): `python standalone/app/interactive.py --world supermarket --robot walker`
+  opens a MuJoCo window. Keys `1`–`5` look at a marker, `C` looks at CANCEL, `0` looks away, arrows teleop, `Space`
+  e-stop, `R` reset. The decoder and FSM are the same, but it uses
+  a built-in planner instead of Nav2.
+- **What stays real:** the decoder, intent rules, FSM, Nav2, collision monitor, health gates and every safety layer
+  (watchdogs, e-stop, walker dead-man grip).
+- **What does not:** the EEG is **SIMULATED** (labeled everywhere: banner, badge, logs). Say so out loud. This shows
+  the control loop, not a neural result.
+
 ## Troubleshooting (fast)
 | symptom | do this |
 |---|---|

@@ -47,6 +47,8 @@ button.secondary { background: transparent; }
 .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; }
 .modal { position: fixed; inset: 0; margin: auto; max-width: 560px; height: fit-content; background: var(--panel); border: 2px solid var(--critical); border-radius: 14px; padding: 20px 24px; z-index: 10; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
 .hidden { display: none !important; }
+#demo-banner { padding: 8px 16px; background: color-mix(in srgb, var(--warning) 28%, var(--panel)); border-bottom: 1px solid var(--grid); font-size: 14px; }
+#demo-banner kbd { font: 600 12px ui-monospace, monospace; padding: 1px 6px; border: 1px solid var(--muted); border-radius: 4px; background: var(--surface); }
 footer { padding: 0 16px 16px; }
 @media (max-width: 800px) {
   #layout { grid-template-columns: 1fr; padding: 16px; }

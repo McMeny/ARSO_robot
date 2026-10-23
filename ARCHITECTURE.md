@@ -60,7 +60,7 @@ stateDiagram-v2
   PAUSED --> ENGAGED: link restored (same goal)
   IDLE --> HOLD: field robot: headset link lost (no wander)
   HOLD --> IDLE: headset back
-  IDLE --> LOST: scan/map mismatch or AMCL covariance
+  IDLE --> LOST: LiDAR rays through mapped walls or AMCL covariance
   ENGAGED --> LOST
   LOST --> IDLE: recovered
   IDLE --> ESTOP: e-stop

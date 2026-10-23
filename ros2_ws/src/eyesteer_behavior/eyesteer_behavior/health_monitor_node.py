@@ -110,7 +110,8 @@ class HealthMonitor(Node):
 
     def on_scan(self, m):
         now = self.wall()
-        self.scan_times = [t for t in self.scan_times if now - t < 3.0] + [now]
+        stamp = m.header.stamp.sec + m.header.stamp.nanosec * 1e-9
+        self.scan_times = [(w, st) for w, st in self.scan_times if now - w < 3.0] + [(now, stamp)]
         self.scan_frame = m.header.frame_id
 
     def on_mcu(self, m):
@@ -164,10 +165,16 @@ class HealthMonitor(Node):
         bad = [k for k, v in known.items() if v != self.table_hash]
         g["frequency_table"].set(bool(known) and not bad, f"hash {self.table_hash}" + (f" MISMATCH: {bad}" if bad else ""))
         # LiDAR
+        # (wall arrival, header stamp): liveness by wall time (a dead LiDAR sends nothing, so prune here too);
+        # the RATE from the stamps, i.e. on the robot's clock. In sim that is sim time: a sim running slower
+        # than real time under CPU load delivers fewer scans per wall second, which is not a LiDAR fault.
+        self.scan_times = [(w, st) for w, st in self.scan_times if now - w < 3.0]
         n = len(self.scan_times)
-        rate = (n - 1) / (self.scan_times[-1] - self.scan_times[0]) if n > 2 else 0.0
-        g["lidar"].set(abs(rate - 10.0) <= 2.0 and self.scan_frame == "laser_frame",
-                       f"/scan {rate:.1f} Hz in '{self.scan_frame}'", rate)
+        span = self.scan_times[-1][1] - self.scan_times[0][1] if n > 2 else 0.0
+        rate = (n - 1) / span if span > 0 else 0.0
+        alive = n > 2 and now - self.scan_times[-1][0] < 0.5
+        g["lidar"].set(alive and abs(rate - 10.0) <= 2.0 and self.scan_frame == "laser_frame",
+                       f"/scan {rate:.1f} Hz in '{self.scan_frame}'" + ("" if alive or n <= 2 else " (silent)"), rate)
         # TF
         try:
             for a, b in (("map", "odom"), ("odom", "base_footprint"), ("base_footprint", "laser_frame")):

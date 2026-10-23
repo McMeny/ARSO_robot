@@ -1,5 +1,8 @@
 // Headset app (Section 14): consent -> calibrate (headset <-> map) -> place markers -> run.
 // WebXR immersive-ar (passthrough) on the Quest; desktop preview (2D map) everywhere else.
+// Desktop demo (system.json "demo" or ?demo=1): no headset and no Muse. The 2D map stands in for the headset:
+// clicking a marker or pressing its number = looking at it, which drives the SIMULATED EEG through the real
+// decoder. Nothing flickers on screen (so no photosensitivity consent is needed) and MR is disabled.
 import { headsetToMap, mapToHeadset, solve, fromMsg } from "./calib.js";
 import { FlickerScheduler, luminance } from "./flicker.js";
 import { markerArrayMsg, msgToMarker, nextSlot, frequencyFor, xrTimingMsg } from "./messages.js";
@@ -14,7 +17,7 @@ const S = {
   markers: [], status: null, bci: null, health: null, pose: null, poseIsTruth: false,
   cal: null, consent: false, mode: "run", xrSession: null, aimed: 0, cue: null,
   timing: new FrameTiming(), frame: 0, blocked: false, connected: false, placed: [], calPoints: [],
-  selections: [], flickerMode: "square", latency: [], aimLog: [], offsets: [],
+  selections: [], flickerMode: "square", latency: [], aimLog: [], offsets: [], demo: false,
 };
 
 // ------------------------------------------------------------------ boot
@@ -27,6 +30,13 @@ async function boot() {
   if (q.get("emulate_refresh")) {                 // TEST ONLY: headless headset client
     S.timing = new FrameTiming(240, parseFloat(q.get("emulate_refresh")));
     S.emulated = true;
+  }
+  S.demo = !!S.cfg.demo || q.get("demo") === "1";
+  if (S.demo) {
+    $("consent").classList.add("hidden");          // nothing flickers in the desktop demo
+    $("demo-banner").classList.remove("hidden");
+    $("demo-eeg").textContent = S.cfg.eeg === "lsl" ? "REAL EEG (no on-screen stimulus: selections unlikely)" : S.cfg.eeg_label;
+    document.addEventListener("keydown", onDemoKey);
   }
   const badge = $("eeg-badge");
   badge.textContent = S.cfg.eeg_label + (S.cfg.eeg === "synthetic" ? " (gaze-driven)" : "");
@@ -48,7 +58,11 @@ async function boot() {
     onCalibration: (m) => { S.cal = fromMsg(m); renderMode(); },
     onCue: (c) => { S.cue = c >= -1 ? c : null; },
     onPose: (p, truth) => { if (truth || !S.poseIsTruth) { S.pose = p; S.poseIsTruth = !!truth; } },
-    onSelection: (m) => { S.selections.push({ id: m.marker_id, label: m.label, t: Date.now() }); },
+    onSelection: (m) => {
+      S.selections.push({ id: m.marker_id, label: m.label, t: Date.now() });
+      if (S.demo && m.marker_id === S.aimed) { S.aimed = 0; publishGaze(); }   // demo user looks away once it fired
+    },
+    onMap: S.demo ? buildMap : null,
     onPeople: (p) => { S.people = p.map((q) => [q.position.x, q.position.y, q.position.z]); },
     onLatency: (e) => {
       if (e.event === "pong") {               // NTP-style offset: robot wall clock - page clock
@@ -98,13 +112,40 @@ function publishTiming() {
 
 // synthetic gaze: the marker the user aims at drives the SIMULATED EEG (sim demos only)
 function publishGaze() {
-  if (S.cfg.eeg !== "synthetic" || !S.consent) return;
+  if (S.cfg.eeg !== "synthetic" || !(S.consent || S.demo)) return;
   S.ros.pub("/bci/gaze", "std_msgs/Int32", { data: S.aimed | 0 });
 }
 
 // ------------------------------------------------------------------ desktop preview (2D map)
 const view = { scale: 40, cx: 450, cy: 320 };
+// occupancy grid -> offscreen image (row 0 of the grid is the map's bottom edge, so rows are flipped)
+function buildMap(m) {
+  const { width: w, height: h, resolution: res } = m.info;
+  const css = getComputedStyle(document.documentElement);
+  const hex = (v) => v.trim().replace("#", "").match(/../g).map((x) => parseInt(x, 16));
+  const occ = hex(css.getPropertyValue("--ink2")), free = hex(css.getPropertyValue("--surface"));
+  const cv = document.createElement("canvas");
+  cv.width = w; cv.height = h;
+  const img = cv.getContext("2d").createImageData(w, h);
+  for (let r = 0; r < h; r++) {
+    for (let c = 0; c < w; c++) {
+      const v = m.data[r * w + c], k = 4 * ((h - 1 - r) * w + c);
+      const col = v > 50 ? occ : free;
+      img.data.set([col[0], col[1], col[2], v < 0 ? 0 : 255], k);
+    }
+  }
+  cv.getContext("2d").putImageData(img, 0, 0);
+  S.map = { cv, res, ox: m.info.origin.position.x, oy: m.info.origin.position.y, w, h };
+  if (!S.markers.length) view.mx = undefined;          // refit to the map
+}
 function fitView() {
+  if (!S.markers.length && S.map) {                     // nothing placed yet: show the whole map
+    const c = $("preview"), M = S.map;
+    view.scale = Math.min(c.width / (M.w * M.res), c.height / (M.h * M.res)) * 0.95;
+    view.mx = M.ox + (M.w * M.res) / 2;
+    view.my = M.oy + (M.h * M.res) / 2;
+    return;
+  }
   if (!S.markers.length) return;
   const xs = S.markers.map((m) => m.x), ys = S.markers.map((m) => m.y);
   if (S.pose) { xs.push(S.pose.position.x); ys.push(S.pose.position.y); }
@@ -150,6 +191,25 @@ function onPreviewClick(ev) {
   }
 }
 
+// desktop demo keys: 1-9 look at that marker, C the CANCEL marker, 0 / Esc look away, Space e-stop
+function onDemoKey(ev) {
+  if (ev.target instanceof HTMLInputElement || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+  if (ev.key === " ") {
+    ev.preventDefault();
+    S.ros.pub("/estop", "std_msgs/Bool", { data: true });
+    return;
+  }
+  if (S.mode !== "run") return;
+  let id = null;
+  if (ev.key === "0" || ev.key === "Escape") id = 0;
+  else if (/^[1-9]$/.test(ev.key)) id = S.markers.some((m) => m.id === +ev.key) ? +ev.key : null;
+  else if (ev.key.toLowerCase() === "c") id = (S.markers.find((m) => m.cancel) || {}).id ?? null;
+  if (id === null) return;
+  S.aimed = id;
+  S.aimLog.push({ id, t: Date.now() });
+  publishGaze();
+}
+
 function previewLoop(t) {
   S.timing.push(t);
   if (!S.xrSession) {
@@ -170,7 +230,12 @@ function drawPreview() {
   const css = getComputedStyle(document.documentElement);
   g.fillStyle = css.getPropertyValue("--panel");
   g.fillRect(0, 0, c.width, c.height);
-  if (!view.mx && S.markers.length) fitView();
+  if (view.mx === undefined && (S.markers.length || S.map)) fitView();
+  if (S.map) {
+    const M = S.map, [u0, v0] = w2c(M.ox, M.oy + M.h * M.res);
+    g.imageSmoothingEnabled = false;
+    g.drawImage(M.cv, u0, v0, M.w * M.res * view.scale, M.h * M.res * view.scale);
+  }
   // grid (1 m)
   g.strokeStyle = css.getPropertyValue("--grid");
   g.lineWidth = 1;
@@ -181,8 +246,8 @@ function drawPreview() {
   for (const m of S.markers) {
     const [u, v] = w2c(m.x, m.y);
     const n = S.sched.framesFor(m.slot);
-    let lum = n ? luminance(S.frame, n, S.flickerMode, 0.25, 1.0) : 1;
-    if (!S.consent) lum = 0.6;                              // no flicker before consent
+    let lum = n && !S.demo ? luminance(S.frame, n, S.flickerMode, 0.25, 1.0) : 1;
+    if (!S.consent && !S.demo) lum = 0.6;                   // no flicker before consent
     if (S.cue !== null && S.cue !== undefined && S.cue !== m.id) lum = 0.15;   // calibration: dim the others
     g.globalAlpha = lum;
     g.fillStyle = markerColor(m);
@@ -196,7 +261,7 @@ function drawPreview() {
       g.fillStyle = "#fff"; g.font = "bold 13px system-ui"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(String(qi + 1), u + 22, v - 22);
     }
     g.fillStyle = css.getPropertyValue("--ink"); g.font = "600 13px system-ui"; g.textAlign = "center"; g.textBaseline = "top";
-    g.fillText(`${m.label} ${m.frequency.toFixed(2)} Hz`, u, v + 20);
+    g.fillText(`${S.demo ? `[${m.cancel ? "C" : m.id}] ` : ""}${m.label} ${m.frequency.toFixed(2)} Hz`, u, v + 20);
   }
   if (S.pose) {
     const p = S.pose.position, q = S.pose.orientation;
@@ -205,7 +270,11 @@ function drawPreview() {
     g.fillStyle = "#1baf7a"; g.beginPath(); g.arc(u, v, 9, 0, 2 * Math.PI); g.fill();
     g.strokeStyle = "#1baf7a"; g.lineWidth = 3; g.beginPath(); g.moveTo(u, v); g.lineTo(u + 20 * Math.cos(yaw), v - 20 * Math.sin(yaw)); g.stroke();
   }
-  if (!S.consent) {
+  if (S.demo) {
+    g.fillStyle = css.getPropertyValue("--ink2"); g.font = "14px system-ui"; g.textAlign = "left"; g.textBaseline = "top";
+    const a = S.markers.find((m) => m.id === S.aimed);
+    g.fillText(a ? `Looking at ${a.label}: hold it (~2.5 s) for the decoder to select it` : "Click a marker or press its key to look at it", 12, 10);
+  } else if (!S.consent) {
     g.fillStyle = css.getPropertyValue("--ink2"); g.font = "14px system-ui"; g.textAlign = "left"; g.textBaseline = "top";
     g.fillText("Flicker paused until the photosensitivity consent is accepted.", 12, 10);
   }
@@ -323,6 +392,7 @@ function renderMode(msg) {
 // ------------------------------------------------------------------ WebXR (immersive-ar passthrough)
 async function setupXrButton() {
   const btn = $("enter-xr");
+  if (S.demo) { btn.disabled = true; btn.title = "Desktop demo: no headset (and no flicker)"; return; }
   if (!navigator.xr) { btn.title = "WebXR not available (desktop preview)"; return; }
   const ok = await navigator.xr.isSessionSupported("immersive-ar").catch(() => false);
   btn.disabled = !ok;
@@ -470,8 +540,9 @@ window.eyesteer = {
   state: () => ({ blocked: S.blocked, connected: S.connected, consent: S.consent, mode: S.mode, markers: S.markers, status: S.status,
                   bci: S.bci, health: S.health, cal: S.cal, aimed: S.aimed, frame: S.frame, selections: S.selections,
                   tableHash: S.table && S.table.hash, refresh: S.timing.snappedHz(), latency: S.latency, aimLog: S.aimLog,
-                  pose: S.pose, people: S.people || [], clockOffset: clockOffset(), clockRtt: clockRtt() }),
+                  pose: S.pose, people: S.people || [], clockOffset: clockOffset(), clockRtt: clockRtt(), demo: S.demo }),
   pub: (topic, type, msg) => S.ros.pub(topic, type, msg),
+  markerPx: (id) => { const m = S.markers.find((k) => k.id === id); return m ? w2c(m.x, m.y) : null; },   // canvas px
   placeHeadsetFrame: (list) => {     // markers given in map coordinates, sent as the headset would: in its own frame
     const hs = list.map((m) => { const h = mapToHeadset([m.x, m.y, m.z], S.cal); return { ...m, x: h[0], y: h[1], z: h[2],
       facing: Math.atan2(Math.sin(m.facing - S.cal.yaw), Math.cos(m.facing - S.cal.yaw)), frequency: frequencyFor(m.slot, S.table) }; });

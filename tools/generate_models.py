@@ -448,7 +448,7 @@ def render_template(text: str, r: dict, extra: dict) -> str:
         fp_line = f"footprint: \"{json.dumps(fp['polygon']).replace(' ', '')}\""
     subs = {"FOOTPRINT_LINE": fp_line, "INFLATION_RADIUS": str(r["nav"]["inflation_radius"]),
             "COST_SCALING": str(r["nav"]["cost_scaling_factor"]),
-            "V_MAX": str(r["limits"]["v_max"]), "W_MAX": str(r["limits"]["w_max"]),
+            "V_MAX": str(r["limits"]["v_max"]), "W_MAX": str(r["limits"]["w_max"]), "SPIN_W_MAX": str(min(r["limits"]["w_max"], 0.6)),
             "A_MAX": str(r["limits"]["a_max"]), "ALPHA_MAX": str(r["limits"]["alpha_max"]),
             "XY_TOL": str(r["nav"]["goal_xy_tolerance"]),
             "YAW_TOL": fmt(math.radians(r["nav"]["goal_yaw_tolerance_deg"])),

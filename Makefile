@@ -36,7 +36,7 @@ test-firmware: ## host unit tests of the firmware core (g++) + PlatformIO builds
 	mkdir -p firmware/build && g++ -std=c++11 -Wall -Wextra -O1 -o firmware/build/test_core firmware/test/test_core.cpp firmware/lib/eyesteer_fw/eyesteer_fw.cpp && firmware/build/test_core
 
 test-web: ## node unit tests of the headset app
-	cd webxr && node --test tests/
+	cd webxr && node --test tests/*.test.mjs
 
 test-ros: ## ROS launch/scenario tests in the sim stack (needs ROS 2 + built workspace)
 	$(ROS) bash tests/ros/run_all.sh mujoco
@@ -57,6 +57,12 @@ demo-sim: ## gated bring-up of the sim (HIL) system; motion stays locked until a
 
 demo-real: ## gated bring-up on the Jetson (real robot)
 	$(ROS) $(PY) tools/demo.py real --robot $(robot) --eeg lsl
+
+demo-desktop: ## no headset, no Muse: sim driven from the browser's 2D map (click/keys = look), SIMULATED EEG
+	$(ROS) $(PY) tools/demo.py sim --desktop --world $(world) --robot $(robot)
+
+demo-real-desktop: ## no headset, no Muse: the REAL robot driven from a laptop browser, SIMULATED EEG
+	$(ROS) $(PY) tools/demo.py real --desktop --robot $(robot)
 
 firmware: ## build the firmware for every PlatformIO env
 	cd firmware && $(PY) -m platformio run

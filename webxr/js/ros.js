@@ -61,6 +61,8 @@ export class RosLink {
     this.sub("/bci/selection", "eyesteer_interfaces/Selection", (m) => h.onSelection && h.onSelection(m));
     this.sub("/sim/people", "geometry_msgs/PoseArray", (m) => h.onPeople && h.onPeople(m.poses), { throttle_rate: 200 });
     this.sub("/eyesteer/latency", "std_msgs/String", (m) => h.onLatency && h.onLatency(JSON.parse(m.data)));
+    // the occupancy map, only where it is drawn (desktop demo): not worth the bandwidth on the headset
+    if (h.onMap) this.sub("/map", "nav_msgs/OccupancyGrid", (m) => h.onMap(m));
   }
 
   pub(name, type, msg) {

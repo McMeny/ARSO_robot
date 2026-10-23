@@ -7,13 +7,13 @@
   "eeg": "SIMULATED",
   "selections": [
     {
-      "t": 5.33,
+      "t": 5.23,
       "id": 2,
       "label": "B",
       "correct": true
     },
     {
-      "t": 27.57,
+      "t": 27.17,
       "id": 6,
       "label": "CANCEL",
       "correct": true
@@ -24,15 +24,15 @@
   "false_per_min_lookaround": null,
   "arrivals": [],
   "detection_latency_s": [
-    2.33,
-    2.57
+    2.23,
+    2.17
   ],
-  "path_length_m": 17.39,
-  "min_clearance_m": 0.08,
+  "path_length_m": 16.66,
+  "min_clearance_m": 0.091,
   "collisions": 0,
-  "collision_monitor_activations": 6,
+  "collision_monitor_activations": 0,
   "mux_share": {
-    "LOCK:ESTOP": 0.161,
+    "LOCK:ESTOP": 0.162,
     "NAVIGATION": 0.767,
     "TELEOP": 0.072
   },

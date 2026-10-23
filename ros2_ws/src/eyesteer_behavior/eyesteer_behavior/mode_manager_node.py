@@ -11,11 +11,9 @@ from eyesteer_behavior import _root  # noqa: F401
 import numpy as np
 import rclpy
 from action_msgs.msg import GoalStatus
-from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseStamped
 from nav2_msgs.action import NavigateToPose
 from nav_msgs.msg import OccupancyGrid, Odometry
-from sensor_msgs.msg import LaserScan
-from tf2_ros import Buffer, TransformListener
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
@@ -35,12 +33,14 @@ LATCHED = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL, relia
 class MapClearance:
     """Footprint clearance against the /map occupancy grid (works identically in sim and real)."""
 
-    def __init__(self, grid: OccupancyGrid):
+    def __init__(self, grid: OccupancyGrid, unknown_free: bool = False):
         info = grid.info
         occ = np.array(grid.data, np.int16).reshape(info.height, info.width)
         self.res = info.resolution
         self.ox, self.oy = info.origin.position.x, info.origin.position.y
-        self.dist = distance_transform_edt(~((occ > 50) | (occ < 0))) * self.res
+        blocked = (occ > 50) if unknown_free else ((occ > 50) | (occ < 0))
+        self.dist = distance_transform_edt(~blocked) * self.res
+        self.occ = occ > 50                     # mapped obstacles only (not unknown / outside the map)
 
     def sdf(self, px, py):
         c = ((np.asarray(px) - self.ox) / self.res).astype(int)
@@ -50,12 +50,19 @@ class MapClearance:
         out[inside] = self.dist[r[inside], c[inside]]
         return out
 
+    def occupied(self, px, py):
+        c = ((np.asarray(px) - self.ox) / self.res).astype(int)
+        r = ((np.asarray(py) - self.oy) / self.res).astype(int)
+        inside = (r >= 0) & (r < self.occ.shape[0]) & (c >= 0) & (c < self.occ.shape[1])
+        out = np.zeros(np.shape(px), bool)
+        out[inside] = self.occ[r[inside], c[inside]]
+        return out
+
 
 class ModeManagerNode(Node):
     def __init__(self):
         super().__init__("mode_manager")
         self.robot = self.declare_parameter("robot", "field_robot").value
-        self.lost_cov = self.declare_parameter("localization_lost_cov", 1.0).value
         self.headset_timeout = self.declare_parameter("headset_timeout", 3.0).value
         self.rcfg = config.robot(self.robot)
         self.fp = Footprint(config.geometry(self.robot)["footprint"])
@@ -77,11 +84,7 @@ class ModeManagerNode(Node):
         self.pub_lat = self.create_publisher(String, "/eyesteer/latency", 10)
         self.lat = {"selection": None, "accepted": None, "moving_reported": True}
         self.last_display = None
-        self.tf = Buffer()
-        TransformListener(self.tf, self)
-        self.loc_bad_since = None
         self.loc_ok = True
-        self.create_subscription(LaserScan, "/scan", self.on_scan, rclpy.qos.qos_profile_sensor_data)
         self.create_subscription(Odometry, "/odom", self.on_odom, 10)
         # clock-offset ping from the headset (NTP-style), so latencies across machines are measurable
         self.create_subscription(String, "/eyesteer/ping", lambda m: self.event("pong", ping=m.data), 10)
@@ -96,8 +99,8 @@ class ModeManagerNode(Node):
         self.create_subscription(Bool, "/estop", self.on_estop, 10)
         self.create_subscription(Bool, "/lock/estop", lambda m: setattr(self, "estop", m.data), 10)
         self.create_subscription(Empty, "/system/reset", self.on_reset, 10)
-        self.create_subscription(PoseWithCovarianceStamped, "/amcl_pose", self.on_amcl, LATCHED)
-        self.create_subscription(Bool, "/localization/ok", lambda m: self.run_cmds(self.fsm.on_localization(self.now(), m.data)), 10)
+        # localization_monitor (its own process: scan-vs-map + AMCL covariance) decides LOST / recovered
+        self.create_subscription(Bool, "/localization/ok", self.on_localization, LATCHED)
         self.create_subscription(BciStatus, "/bci/status", self.on_bci, 10)
         self.create_subscription(XrTiming, "/xr/timing", self.on_xr, 10)
         self.create_subscription(String, "/mux/source", lambda m: setattr(self, "mux_source", m.data), 10)
@@ -141,40 +144,6 @@ class ModeManagerNode(Node):
         if t0 is not None:
             self.event("state_visible", display=m.data, dt_ms=1000 * (time.time() - t0))
 
-    # ------------------------------------------------------------------ localization consistency (24.5)
-    def on_scan(self, s: LaserScan):
-        """Fraction of LiDAR hits near an occupied /map cell at the current map pose. A teleported
-        (kidnapped) robot keeps a confident but wrong AMCL pose; this catches it."""
-        if self.clear is None:
-            return
-        try:
-            t = self.tf.lookup_transform("map", s.header.frame_id, rclpy.time.Time())
-        except Exception:
-            return
-        q = t.transform.rotation
-        yaw = math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
-        r = np.asarray(s.ranges, float)
-        a = s.angle_min + np.arange(len(r)) * s.angle_increment
-        ok = np.isfinite(r) & (r > s.range_min) & (r < min(s.range_max, 8.0))
-        if ok.sum() < 20:
-            return
-        x = t.transform.translation.x + r[ok] * np.cos(a[ok] + yaw)
-        y = t.transform.translation.y + r[ok] * np.sin(a[ok] + yaw)
-        ratio = float(np.mean(self.clear.sdf(x, y) < 0.25))
-        now = self.now()
-        if ratio < 0.4:
-            self.loc_bad_since = self.loc_bad_since or now
-            if self.loc_ok and now - self.loc_bad_since > 2.0:
-                self.loc_ok = False
-                self.get_logger().error(f"LOCALIZATION LOST: only {ratio * 100:.0f} % of the scan matches the map")
-                self.run_cmds(self.fsm.on_localization(now, False))
-        else:
-            self.loc_bad_since = None
-            if not self.loc_ok and ratio > 0.7:
-                self.loc_ok = True
-                self.get_logger().info(f"localization recovered ({ratio * 100:.0f} % scan match)")
-                self.run_cmds(self.fsm.on_localization(now, True))
-
     def on_estop(self, m: Bool):
         if m.data:
             self.run_cmds(self.fsm.on_estop(self.now(), True))
@@ -182,11 +151,10 @@ class ModeManagerNode(Node):
     def on_reset(self, _):
         self.run_cmds(self.fsm.reset(self.now()))
 
-    def on_amcl(self, m: PoseWithCovarianceStamped):
-        c = m.pose.covariance
-        if (c[0] + c[7]) > self.lost_cov and self.loc_ok:
-            self.loc_ok = False
-            self.run_cmds(self.fsm.on_localization(self.now(), False))
+    def on_localization(self, m: Bool):
+        if m.data != self.loc_ok:
+            self.loc_ok = m.data
+            self.run_cmds(self.fsm.on_localization(self.now(), m.data))
 
     def on_bci(self, m: BciStatus):
         ok = bool(m.signal_ok)
@@ -301,6 +269,9 @@ class ModeManagerNode(Node):
 
 
 def main():
+    import faulthandler
+    import signal
+    faulthandler.register(signal.SIGUSR1, all_threads=True)   # `pkill -USR1 -f <node>`: dump all thread stacks
     rclpy.init()
     n = ModeManagerNode()
     try:

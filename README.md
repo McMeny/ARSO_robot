@@ -25,6 +25,7 @@ Research system for a paper with Prof. Steve Mann (target venue: IEEE ARSO). Sta
 | **A: ROS sim** | `make sim world=supermarket robot=walker gaze=headset eeg=synthetic` | the full deployable ROS 2 stack (Nav2, twist_mux, collision monitor, BCI over LSL, rosbridge, WebXR app) with MuJoCo as the robot |
 | **A2: ROS HIL** | `make sim … backend=mujoco_hil` / `make demo-sim` | as A, but motion goes through the real `ros2_control` + `diffdrive_arduino` path into an MCU emulator running the firmware's own C core |
 | **B: real robot** | `make demo-real robot=walker` | identical upper stack on the Jetson with the real MCU, LiDAR and Muse |
+| **Desktop demo** (no headset, no Muse) | `make demo-desktop` (sim) / `make demo-real-desktop` (robot) | a browser's 2D map is the headset: click a marker or press its number to look at it; SIMULATED EEG through the real decoder; no on-screen flicker ([DEMO_DAY.md](DEMO_DAY.md#fallback-no-headset-no-muse-desktop-demo)) |
 
 Decoding, intent, FSM, queue, mux rules, admittance and footprints live in the ROS-free package `eyesteer_core`.
 The ROS nodes are thin wrappers around it, so the logic in the videos is the logic on the robot.
@@ -79,6 +80,8 @@ See the end of [DEPLOY.md](DEPLOY.md) and the final section below. Each item is 
 |---|---|
 | MCU protocol, encoders by hand, 200 ms watchdog | `bash deploy/preflight.sh --only mcu` (wheels off the ground) |
 | motor polarity / encoder direction / CPR | `python3 tools/motor_test.py` / `--measure-cpr` |
+| speed feed-forward constant (then `make generate` + `python3 tools/flash.py`) | `python3 tools/motor_test.py --measure-ff` |
+| e-stop button wiring + latch | `bash deploy/preflight.sh --only mcu` (press and release the button when prompted) |
 | LiDAR rate + frame, TF tree | `bash deploy/preflight.sh --only lidar` / `--only tf` (stack running) |
 | Muse stream, channel map, 10 s spectrum | `python3 tools/eeg_check.py stream` |
 | Oz contact + mapping (eyes-closed alpha) | `python3 tools/eeg_check.py alpha` |

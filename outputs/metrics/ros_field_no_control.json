@@ -11,10 +11,10 @@
   "false_per_min_lookaround": 0.0,
   "arrivals": [],
   "detection_latency_s": [],
-  "path_length_m": 33.09,
-  "min_clearance_m": 0.172,
+  "path_length_m": 30.03,
+  "min_clearance_m": 0.152,
   "collisions": 0,
-  "collision_monitor_activations": 3,
+  "collision_monitor_activations": 1,
   "mux_share": {
     "NAVIGATION": 0.999,
     "NONE": 0.001

@@ -7,47 +7,53 @@
   "eeg": "SIMULATED",
   "selections": [
     {
-      "t": 5.47,
+      "t": 4.91,
       "id": 1,
       "label": "Beans",
       "correct": true
     },
     {
-      "t": 46.86,
+      "t": 7.07,
+      "id": 1,
+      "label": "Beans",
+      "correct": true
+    },
+    {
+      "t": 46.5,
       "id": 5,
       "label": "Checkout",
       "correct": true
     }
   ],
-  "correct_selections": 2,
+  "correct_selections": 3,
   "false_selections": 0,
   "false_per_min_lookaround": null,
   "arrivals": [
     {
-      "t": 37.91,
+      "t": 36.86,
       "id": 1,
       "label": "Beans",
-      "time_to_goal_s": 32.29
+      "time_to_goal_s": 31.87
     },
     {
-      "t": 91.99,
+      "t": 89.0,
       "id": 5,
       "label": "Checkout",
-      "time_to_goal_s": 44.96
+      "time_to_goal_s": 42.43
     }
   ],
   "detection_latency_s": [
-    2.47,
-    2.86
+    1.912,
+    2.496
   ],
-  "path_length_m": 17.95,
-  "min_clearance_m": 0.147,
+  "path_length_m": 17.67,
+  "min_clearance_m": 0.151,
   "collisions": 0,
   "collision_monitor_activations": 1,
   "mux_share": {
-    "LOCK:DEADMAN": 0.011,
-    "NAVIGATION": 0.378,
-    "NONE": 0.611
+    "LOCK:DEADMAN": 0.01,
+    "NAVIGATION": 0.365,
+    "NONE": 0.625
   },
   "states_seen": [
     "ASSIST",

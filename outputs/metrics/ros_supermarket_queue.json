@@ -13,7 +13,7 @@
       "correct": true
     },
     {
-      "t": 16.47,
+      "t": 16.6,
       "id": 3,
       "label": "Milk",
       "correct": true
@@ -24,29 +24,29 @@
   "false_per_min_lookaround": null,
   "arrivals": [
     {
-      "t": 41.12,
+      "t": 39.83,
       "id": 2,
       "label": "Bread",
-      "time_to_goal_s": 35.48
+      "time_to_goal_s": 34.16
     },
     {
-      "t": 61.47,
+      "t": 58.02,
       "id": 3,
       "label": "Milk",
-      "time_to_goal_s": 18.87
+      "time_to_goal_s": 16.66
     }
   ],
   "detection_latency_s": [
     2.47,
-    2.47
+    2.6
   ],
-  "path_length_m": 15.34,
-  "min_clearance_m": 0.175,
+  "path_length_m": 15.2,
+  "min_clearance_m": 0.138,
   "collisions": 0,
-  "collision_monitor_activations": 0,
+  "collision_monitor_activations": 1,
   "mux_share": {
-    "NAVIGATION": 0.423,
-    "NONE": 0.577
+    "NAVIGATION": 0.397,
+    "NONE": 0.603
   },
   "states_seen": [
     "ASSIST",

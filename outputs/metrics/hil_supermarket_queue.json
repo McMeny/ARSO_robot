@@ -7,13 +7,13 @@
   "eeg": "SIMULATED",
   "selections": [
     {
-      "t": 5.35,
+      "t": 5.28,
       "id": 2,
       "label": "Bread",
       "correct": true
     },
     {
-      "t": 16.64,
+      "t": 16.2,
       "id": 3,
       "label": "Milk",
       "correct": true
@@ -24,29 +24,29 @@
   "false_per_min_lookaround": null,
   "arrivals": [
     {
-      "t": 46.41,
+      "t": 50.1,
       "id": 2,
       "label": "Bread",
-      "time_to_goal_s": 40.99
+      "time_to_goal_s": 44.72
     },
     {
-      "t": 69.95,
+      "t": 70.4,
       "id": 3,
       "label": "Milk",
-      "time_to_goal_s": 21.88
+      "time_to_goal_s": 18.8
     }
   ],
   "detection_latency_s": [
-    2.35,
-    2.64
+    2.284,
+    2.196
   ],
-  "path_length_m": 15.71,
-  "min_clearance_m": 0.137,
+  "path_length_m": 15.3,
+  "min_clearance_m": 0.149,
   "collisions": 0,
-  "collision_monitor_activations": 6,
+  "collision_monitor_activations": 2,
   "mux_share": {
-    "NAVIGATION": 0.489,
-    "NONE": 0.511
+    "NAVIGATION": 0.494,
+    "NONE": 0.506
   },
   "states_seen": [
     "ASSIST",

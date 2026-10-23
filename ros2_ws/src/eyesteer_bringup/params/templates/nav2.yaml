@@ -4,7 +4,7 @@
 # config/robot_*.yaml (single source of truth). use_sim_time and the AMCL initial pose are set by the launch file.
 amcl:
   ros__parameters:
-    alpha1: 0.2
+    alpha1: 0.3        # rotation noise from rotation: encoder odometry over-reads in-place turns (caster scrub)
     alpha2: 0.2
     alpha3: 0.2
     alpha4: 0.2
@@ -195,7 +195,7 @@ behavior_server:
     robot_base_frame: base_footprint
     transform_tolerance: 0.2
     simulate_ahead_time: 2.0
-    max_rotational_vel: {{W_MAX}}
+    max_rotational_vel: {{SPIN_W_MAX}}   # recovery spins slow: fast in-place turns add ~5 deg odometry error each
     min_rotational_vel: 0.3
     rotational_acc_lim: {{ALPHA_MAX}}
 

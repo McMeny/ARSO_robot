@@ -1,8 +1,12 @@
 """Simulation: MuJoCo is just another hardware backend for the same stack (D15, D20).
 
 ros2 launch eyesteer_bringup sim.launch.py world:=field|supermarket robot:=field_robot|walker \\
-    backend:=mujoco|mujoco_hil eeg:=synthetic|replay|lsl gaze:=headset|keyboard|scenario \\
+    backend:=mujoco|mujoco_hil eeg:=synthetic|replay|lsl demo:=true \\
     rviz:=true viewer:=true scenario:=<name> require_headset:=false record:=false
+
+demo:=true           desktop demo without a headset or a Muse: the browser's 2D map is the "headset" (click a
+                     marker or press its number to look at it), SIMULATED EEG through the real decoder, no
+                     on-screen flicker; forces eeg:=synthetic (unless replay) and require_headset:=false
 
 backend:=mujoco      mujoco_bridge publishes /odom + TF and consumes /cmd_vel (the robot "driver")
 backend:=mujoco_hil  mujoco_bridge hosts the MCU emulator (firmware core on a pty) -> mcu_bridge ->
@@ -22,11 +26,14 @@ from launch.substitutions import LaunchConfiguration
 
 ARGS = {"world": "field", "robot": "field_robot", "backend": "mujoco", "eeg": "synthetic", "gaze": "headset",
         "rviz": "false", "viewer": "false", "scenario": "", "require_headset": "false", "record": "false",
-        "slam": "false", "replay_file": "", "user": "default", "web": "true", "rosbridge": "true"}
+        "slam": "false", "replay_file": "", "user": "default", "web": "true", "rosbridge": "true", "demo": "false"}
 
 
 def setup(context):
     a = {k: LaunchConfiguration(k).perform(context) for k in ARGS}
+    if a["demo"] == "true":                     # no headset, no Muse: see the module docstring
+        a["require_headset"] = "false"
+        a["eeg"] = a["eeg"] if a["eeg"] == "replay" else "synthetic"
     bring = get_package_share_directory("eyesteer_bringup")
     desc = get_package_share_directory("eyesteer_description")
     root = open(os.path.join(bring, "eyesteer_root.txt")).read().strip()
@@ -56,7 +63,8 @@ def setup(context):
         launch_arguments={"robot": robot, "world": a["world"], "eeg": a["eeg"], "use_sim_time": "true",
                           "nav_variant": "sim", "mode": "hil" if hil else "sim", "slam": a["slam"],
                           "require_headset": a["require_headset"], "record": a["record"], "user": a["user"],
-                          "replay_file": a["replay_file"], "web": a["web"], "rosbridge": a["rosbridge"]}.items())
+                          "replay_file": a["replay_file"], "web": a["web"], "rosbridge": a["rosbridge"],
+                          "demo": a["demo"]}.items())
     acts.append(TimerAction(period=6.0 if hil else 1.0, actions=[stack]))
     if a["rviz"] == "true":
         acts.append(Node(package="rviz2", executable="rviz2", arguments=["-d", os.path.join(desc, "rviz", "eyesteer.rviz")],

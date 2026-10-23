@@ -97,6 +97,7 @@ def headset_client(url_extra="", emulate_refresh=90, headless=True):
         page = ctx.new_page()
         logs = []
         page.on("console", lambda m: logs.append(m.text))
+        page.on("pageerror", lambda e: logs.append(f"PAGE ERROR: {e}"))
         page.goto(url)
         page.wait_for_function("window.eyesteer !== undefined", timeout=30000)
         try:

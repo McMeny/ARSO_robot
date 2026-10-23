@@ -5,13 +5,14 @@ topics (/sim/eeg_fault, /sim/teleport, /sim/kill_mcu, /sim/lidar_off, /sim/estop
 """
 from __future__ import annotations
 
+import json
 import math
 import time
 
 import pytest
 
 from harness import bash_run, headset_client, ros_available, sim_stack, wait_state
-from test_full_system import Tracker, run_until
+from test_full_system import Tracker, run_until, track
 
 pytestmark = pytest.mark.skipif(not ros_available(), reason="ROS 2 workspace not available")
 
@@ -84,22 +85,26 @@ def test_muse_stream_drop_and_flat(robot):
             up(page)
             tr = Tracker(page, robot, world)
             engage(page, tr, 3 if robot == "field_robot" else 1, "C" if robot == "field_robot" else "Beans")
-            run_until(page, tr, "true", 4)
+            track(page, tr, 4)
             for _ in range(3):
                 pub(page, "/sim/eeg_fault", "std_msgs/String", "{data: 'drop'}")
             wait_state(page, "s.bci && !s.bci.signal_ok && s.health.components.find(c => c.name === 'muse_lsl' && c.level === 2)", 20)
             n = len(page.evaluate("window.eyesteer.state().selections"))
+            x0, y0, _ = tr.sample()["xy"]
             page.evaluate("window.eyesteer.aim(2)")       # looking at another marker during the outage: nothing happens
-            run_until(page, tr, "true", 5)
+            track(page, tr, 5)
             page.evaluate("window.eyesteer.aim(0)")
             assert len(page.evaluate("window.eyesteer.state().selections")) == n
             if robot == "walker":                          # walker stops and holds
                 run_until(page, tr, "s.status.state === 'PAUSED'", 10)
-                run_until(page, tr, "true", 2)
+                track(page, tr, 2)
                 assert tr.speed(1.0) < 0.05
             else:                                          # field robot: the current goal continues
                 assert page.evaluate("window.eyesteer.state().status.state") in ("ENGAGED", "ARRIVED")
-                assert tr.speed(1.0) > 0.05 or page.evaluate("window.eyesteer.state().status.state") == "ARRIVED"
+                # displacement over the whole outage (the instantaneous speed is ~0 while it turns in place)
+                x1, y1, _ = tr.sample()["xy"]
+                st = page.evaluate("window.eyesteer.state().status")
+                assert math.hypot(x1 - x0, y1 - y0) > 0.3 or st["state"] == "ARRIVED", st
             pub(page, "/sim/eeg_fault", "std_msgs/String", "{data: 'ok'}")
             wait_state(page, "s.bci && s.bci.signal_ok", 30)
             if robot == "walker":
@@ -144,20 +149,20 @@ def test_localization_lost_on_teleport():
             up(page)
             tr = Tracker(page, "field_robot", "field")
             engage(page, tr, 2, "B")
-            run_until(page, tr, "true", 3)
-            st = tr.sample()
-            x, y, _ = st["xy"]
+            track(page, tr, 3)
             pub(page, "/sim/teleport", "geometry_msgs/Pose2D", "{x: 3.6, y: -3.4, theta: 2.0}")   # kidnapped
             run_until(page, tr, "s.status.state === 'LOST'", 20)
-            run_until(page, tr, "true", 2)
+            track(page, tr, 2)
             assert tr.speed(1.0) < 0.05
-            n = len(page.evaluate("window.eyesteer.state().selections"))
             page.evaluate("window.eyesteer.aim(3)")
-            run_until(page, tr, "true", 5)
+            track(page, tr, 5)
             page.evaluate("window.eyesteer.aim(0)")
             assert page.evaluate("window.eyesteer.state().status.state") == "LOST"    # no goals accepted while LOST
-            del n
-            pub(page, "/sim/teleport", "geometry_msgs/Pose2D", f"{{x: {x}, y: {y}, theta: 0.8}}")
+            # recovery = what the operator does: "2D Pose Estimate" (/initialpose) at the robot's true pose
+            q = tr.sample()["pose"]
+            pub(page, "/initialpose", "geometry_msgs/PoseWithCovarianceStamped",
+                "{header: {frame_id: 'map'}, pose: {pose: %s, covariance: [0.0625, 0, 0, 0, 0, 0, 0, 0.0625, 0, 0, 0, 0, "
+                "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0685]}}" % json.dumps(q))
             run_until(page, tr, "s.status.state !== 'LOST'", 30)
 
 
@@ -166,13 +171,14 @@ def test_nav2_goal_failure_retries_then_idle():
         with headset_client() as (page, _):
             up(page)
             tr = Tracker(page, "field_robot", "field")
-            # marker E moved to an unreachable spot (inside crate_b)
+            # marker E moved to an unreachable spot: outside the fence (beyond the map). Inside a crate does
+            # not work: the goal search nudges the approach pose to the nearest free one, which is reachable.
             mk = page.evaluate("window.eyesteer.state().markers")
             for m in mk:
                 if m["label"] == "E":
-                    m.update(x=2.2, y=-1.4, facing=0.0)
+                    m.update(x=7.5, y=0.0, facing=0.0)
             page.evaluate("(l) => window.eyesteer.placeMarkers(l)", mk)
-            wait_state(page, "s.markers.find(m => m.label === 'E' && Math.abs(m.x - 2.2) < 0.01)", 15)
+            wait_state(page, "s.markers.find(m => m.label === 'E' && Math.abs(m.x - 7.5) < 0.01)", 15)
             page.evaluate("window.eyesteer.aim(5)")
             run_until(page, tr, "s.status.state === 'ENGAGED'", 20)
             page.evaluate("window.eyesteer.aim(0)")
@@ -186,14 +192,14 @@ def test_estop_latched():
             up(page)
             tr = Tracker(page, "field_robot", "field")
             engage(page, tr, 3, "C")
-            run_until(page, tr, "true", 4)
+            track(page, tr, 4)
             assert tr.speed(1.0) > 0.1
             pub(page, "/sim/estop_button", "std_msgs/Bool", "{data: true}")
             run_until(page, tr, "s.status.state === 'ESTOP' && s.status.estop", 3)
-            run_until(page, tr, "true", 1.0)
+            track(page, tr, 1.0)
             assert tr.speed(0.5) < 0.05
             pub(page, "/sim/estop_button", "std_msgs/Bool", "{data: false}")
-            run_until(page, tr, "true", 3)
+            track(page, tr, 3)
             assert page.evaluate("window.eyesteer.state().status.state") == "ESTOP"     # latched
             pub(page, "/system/reset", "std_msgs/Empty", "{}")
             run_until(page, tr, "s.status.display === 'WANDER' && !s.status.estop", 10)
@@ -205,7 +211,7 @@ def test_sudden_obstacle_collision_monitor_stops():
             up(page)
             tr = Tracker(page, "field_robot", "field")
             engage(page, tr, 3, "C")
-            run_until(page, tr, "true", 5)
+            track(page, tr, 5)
             st = tr.sample()
             x, y, _ = st["xy"]
             q = st["pose"]["orientation"]
@@ -230,7 +236,7 @@ def test_mcu_link_loss_hil(what):
             up(page)
             tr = Tracker(page, "field_robot", "field")
             engage(page, tr, 3, "C")
-            run_until(page, tr, "true", 5)
+            track(page, tr, 5)
             assert tr.speed(1.0) > 0.1
             if what == "controller":      # ROS side dies: no more 'm' commands -> firmware watchdog (200 ms)
                 bash_run("pkill -9 -f ros2_control_node; true", 20)

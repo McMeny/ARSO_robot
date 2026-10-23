@@ -83,6 +83,17 @@ def run_until(page, tr, pred_js, timeout, every=0.25):
     raise TimeoutError(f"timeout: {pred_js} (status {st and st['display']}, queue {st and st['queue_labels']})")
 
 
+def track(page, tr, seconds, every=0.25):
+    """Keep sampling (speed, clearance, collisions) for the full duration. run_until(..., "true", n) is NOT a
+    wait: its predicate is true at once, so it returns after one sample."""
+    t0 = time.time()
+    s = tr.sample()
+    while time.time() - t0 < seconds:
+        time.sleep(every)
+        s = tr.sample()
+    return s
+
+
 def latencies(page):
     st = page.evaluate("window.eyesteer.state()")
     lat = st["latency"]
@@ -148,16 +159,16 @@ def golden_walker(page, tr):
     wait_state(page, "s.markers.length === 6 && s.markers.find(m => m.label === 'Beans')", 20)
     st = tr.sample()
     assert st["status"]["display"] == "ASSIST"
-    time.sleep(2)
+    track(page, tr, 2)
     assert tr.speed(1.5) < 0.02, "the walker must not move on its own in ASSIST"
     page.evaluate("window.eyesteer.aim(1)")
     run_until(page, tr, "s.status && s.status.state === 'ENGAGED' && s.status.goal_label === 'Beans'", 15)
     page.evaluate("window.eyesteer.aim(0)")
-    run_until(page, tr, "true", 8)                        # get going
+    track(page, tr, 8)                        # get going
     v_before = max(tr.speed(1.0), 0.05)
     # pull back on the handles: navigation scaled down, the user wins
     page.evaluate("window.eyesteer.pub('/sim/handle_force_cmd', 'std_msgs/Float32MultiArray', {data: [-11, -11]})")
-    run_until(page, tr, "true", 2.0)
+    track(page, tr, 2.0)
     v_pull = tr.speed(0.8)
     page.evaluate("window.eyesteer.pub('/sim/handle_force_cmd', 'std_msgs/Float32MultiArray', {data: [0, 0]})")
     assert v_pull < 0.8 * v_before + 0.02, f"pull-back did not slow the walker ({v_before:.2f} -> {v_pull:.2f})"
@@ -167,8 +178,7 @@ def golden_walker(page, tr):
         time.sleep(0.25)
         tr.sample()
     run_until(page, tr, "s.status && s.status.deadman_locked", 3)
-    time.sleep(0.8)
-    tr.sample()
+    track(page, tr, 0.8)
     assert tr.speed(0.5) < 0.05, "walker still moving with the grip released"
     for _ in range(3):
         page.evaluate("window.eyesteer.pub('/sim/grip_cmd', 'std_msgs/Bool', {data: true})")
@@ -176,8 +186,7 @@ def golden_walker(page, tr):
     run_until(page, tr, "s.status && !s.status.deadman_locked", 5)
     run_until(page, tr, "s.status && s.status.state === 'ARRIVED' && s.status.goal_label === 'Beans'", 180)
     run_until(page, tr, "s.status && s.status.display === 'ASSIST'", 10)
-    time.sleep(2)
-    tr.sample()
+    track(page, tr, 2)
     assert tr.speed(1.5) < 0.02, "after arrival the walker must stay put (ASSIST, never WANDER)"
 
 

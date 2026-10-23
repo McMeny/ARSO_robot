@@ -2,27 +2,27 @@
   "robot": "field_robot",
   "backend": "mujoco_hil",
   "runs": 5,
-  "passes": 5,
-  "min_clearance_m": 0.622,
+  "passes": 4,
+  "min_clearance_m": 0.693,
   "latency": {
     "gaze onset -> selection (s)": {
-      "measured": 2.265,
+      "measured": 2.407,
       "target": "1.25-3.0"
     },
     "selection -> NavigateToPose accepted (ms)": {
-      "measured": 89.615,
+      "measured": 121.323,
       "target": "0-200"
     },
     "goal accepted -> robot moving (ms)": {
-      "measured": 142.831,
+      "measured": 150.202,
       "target": "0-1000"
     },
     "cmd_vel -> wheel response, HIL (ms)": {
-      "measured": 89.804,
+      "measured": 90.508,
       "target": "0-100"
     },
     "robot state change -> visible in headset (ms)": {
-      "measured": 5.558,
+      "measured": 5.284,
       "target": "0-300"
     }
   }

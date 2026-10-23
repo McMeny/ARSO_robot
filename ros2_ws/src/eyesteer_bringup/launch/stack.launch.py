@@ -19,7 +19,7 @@ from launch_ros.actions import Node
 ARGS = {
     "robot": "field_robot", "world": "field", "map": "", "eeg": "synthetic", "use_sim_time": "true",
     "nav_variant": "sim", "mode": "sim", "slam": "false", "require_headset": "false", "user": "default",
-    "replay_file": "", "record": "false", "web": "true", "rosbridge": "true", "start_pose": "",
+    "replay_file": "", "record": "false", "web": "true", "rosbridge": "true", "start_pose": "", "demo": "false",
 }
 
 
@@ -95,10 +95,19 @@ def setup(context):
              parameters=[common, {"mode": a["mode"], "eeg": a["eeg"], "robot": robot, "slam": a["slam"] == "true",
                                   "require_headset": a["require_headset"] == "true"}]),
     ]
+    if a["slam"] != "true":     # while mapping, slam_toolbox owns the pose and the map is still being built
+        nodes.append(Node(package=beh, executable="localization_monitor", parameters=[common], additional_env=env,
+                          output="screen", respawn=True, respawn_delay=1.0))
     if robot == "walker":
         nodes.append(Node(package=beh, executable="admittance", parameters=[common], additional_env=env, output="screen"))
+    elif a["slam"] == "true" and a["mode"] == "real":
+        pass    # mapping the real space is done with teleop (DEPLOY.md step 9): no autonomous wandering
     else:
-        nodes.append(Node(package=beh, executable="wander", parameters=[common, {"world": world}], additional_env=env, output="screen"))
+        # while mapping, the SLAM map frame is the robot's start pose, not the world frame: wander explores
+        # (unknown counts as free) inside the world's field polygon expressed in that frame
+        wp = {"world": world, "slam_origin": [float(sx), float(sy), float(syaw)] if a["slam"] == "true" else [0.0, 0.0, 0.0],
+              "explore": a["slam"] == "true"}
+        nodes.append(Node(package=beh, executable="wander", parameters=[common, wp], additional_env=env, output="screen"))
     # ---------------- BCI: synthetic/replay always go through a real LSL stream (Muse emulator)
     label = {"synthetic": "SIMULATED", "replay": "REPLAYED", "lsl": "REAL"}[a["eeg"]]
     import uuid
@@ -125,7 +134,7 @@ def setup(context):
         nodes.append(Node(package="rosapi", executable="rosapi_node", name="rosapi", parameters=[common]))
     if a["web"] == "true":
         nodes.append(Node(package=beh, executable="web_server", additional_env=env, output="screen",
-                          parameters=[{"robot": robot, "eeg": a["eeg"], "mode": a["mode"]}]))
+                          parameters=[{"robot": robot, "eeg": a["eeg"], "mode": a["mode"], "demo": a["demo"] == "true"}]))
     if a["record"] == "true":
         out = os.path.join(root, "outputs", "logs", "rosbag")
         nodes.append(ExecuteProcess(cmd=["ros2", "bag", "record", "-a", "-x", "/(clock|map_updates|.*costmap.*)", "-o",

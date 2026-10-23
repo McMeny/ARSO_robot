@@ -145,6 +145,10 @@ class SafetyNode(Node):
         self.pub_cm.publish(String(data=state))
         # D9 watchdog: stale -> zero
         out = self.last_cm if (t - self.last_cm_t) <= self.timeout else Twist()
+        # defense in depth: an active lock zeroes the output HERE too, not only at twist_mux (a stale or
+        # misconfigured mux, or a velocity published straight onto cmd_vel_cm, must not move a locked robot)
+        if any(l["active"] for l in self.mux.locks.values()):
+            out = Twist()
         if out.linear.x != 0.0 or out.angular.z != 0.0:
             v, w = deadband_compensate(out.linear.x, out.angular.z, *self.wheel)
             out = Twist()

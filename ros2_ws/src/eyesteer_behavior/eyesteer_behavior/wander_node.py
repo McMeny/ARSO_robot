@@ -34,6 +34,12 @@ class WanderNode(Node):
         poly = self.declare_parameter("field_polygon", "").value
         self.speed_note = self.declare_parameter("min_goal_distance", 2.0).value
         self.poly = np.array(eval(poly) if poly else load_world(world).field_polygon, float)  # noqa: S307 (param from launch)
+        # SLAM mapping: the map frame is the start pose (ox, oy, oyaw in the world) -> polygon into that frame
+        ox, oy, oyaw = self.declare_parameter("slam_origin", [0.0, 0.0, 0.0]).value
+        c, s = math.cos(-oyaw), math.sin(-oyaw)
+        d = self.poly - [ox, oy]
+        self.poly = np.stack([c * d[:, 0] - s * d[:, 1], s * d[:, 0] + c * d[:, 1]], 1)
+        self.explore = self.declare_parameter("explore", False).value   # unknown cells count as free
         self.rng = random.Random(self.declare_parameter("seed", 3).value)
         self.enabled = False
         self.clear = None
@@ -43,7 +49,7 @@ class WanderNode(Node):
         TransformListener(self.tf, self)
         self.nav = ActionClient(self, NavigateToPose, "navigate_to_pose")
         self.create_subscription(Bool, "/wander/enable", self.on_enable, LATCHED)
-        self.create_subscription(OccupancyGrid, "/map", lambda m: setattr(self, "clear", MapClearance(m)), LATCHED)
+        self.create_subscription(OccupancyGrid, "/map", lambda m: setattr(self, "clear", MapClearance(m, self.explore)), LATCHED)
         self.create_timer(0.5, self.tick)
 
     def on_enable(self, m: Bool):

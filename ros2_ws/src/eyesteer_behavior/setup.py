@@ -19,6 +19,7 @@ setup(
     entry_points={
         "console_scripts": [
             "mode_manager = eyesteer_behavior.mode_manager_node:main",
+            "localization_monitor = eyesteer_behavior.localization_monitor_node:main",
             "wander = eyesteer_behavior.wander_node:main",
             "admittance = eyesteer_behavior.admittance_node:main",
             "anchor_bridge = eyesteer_behavior.anchor_bridge_node:main",

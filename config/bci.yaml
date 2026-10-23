@@ -23,7 +23,7 @@ decoder:
 
 intent:                             # anti-Midas-touch rules (defaults chosen from bci_tradeoff.png)
   rho_threshold: 0.40
-  margin_threshold: 0.08
+  margin_threshold: 0.10             # best minus runner-up rho; 0.08 let a live rho 0.41 / margin 0.08 misfire through
   dwell_windows: 3
   refractory_s: 2.0
 

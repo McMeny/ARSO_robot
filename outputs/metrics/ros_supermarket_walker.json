@@ -7,19 +7,19 @@
   "eeg": "SIMULATED",
   "selections": [
     {
-      "t": 4.48,
+      "t": 4.49,
       "id": 1,
       "label": "Beans",
       "correct": true
     },
     {
-      "t": 6.5,
+      "t": 6.69,
       "id": 1,
       "label": "Beans",
       "correct": true
     },
     {
-      "t": 46.48,
+      "t": 46.15,
       "id": 5,
       "label": "Checkout",
       "correct": true
@@ -30,30 +30,30 @@
   "false_per_min_lookaround": null,
   "arrivals": [
     {
-      "t": 32.79,
+      "t": 33.99,
       "id": 1,
       "label": "Beans",
-      "time_to_goal_s": 28.25
+      "time_to_goal_s": 29.4
     },
     {
-      "t": 78.46,
+      "t": 81.62,
       "id": 5,
       "label": "Checkout",
-      "time_to_goal_s": 31.81
+      "time_to_goal_s": 35.3
     }
   ],
   "detection_latency_s": [
-    1.48,
-    2.48
+    1.49,
+    2.15
   ],
-  "path_length_m": 17.64,
-  "min_clearance_m": 0.105,
+  "path_length_m": 17.75,
+  "min_clearance_m": 0.084,
   "collisions": 0,
   "collision_monitor_activations": 0,
   "mux_share": {
     "LOCK:DEADMAN": 0.011,
-    "NAVIGATION": 0.293,
-    "NONE": 0.696
+    "NAVIGATION": 0.316,
+    "NONE": 0.673
   },
   "states_seen": [
     "ASSIST",

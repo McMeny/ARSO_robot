@@ -62,7 +62,7 @@ VID/PID add `ATTRS{serial}=="…"` to the rule.
 | 6 | Odometry calibration | drive exactly 1 m straight: correct `wheels.radius` by (odom distance / true distance); rotate 360° in place: correct `wheels.separation` by (odom angle / 360°). Edit the robot YAML → `make generate` → rebuild |
 | 7 | PID | defaults Kp 20 / Kd 12 / Ki 0 / Ko 50 (field), 30/10/0/50 (walker), ROSArduinoBridge convention. If the wheels oscillate lower Kp; if they lag raise Kp; add Ki (1–2) only for steady-state error under load |
 | 8 | LiDAR pose | RViz (`rviz:=true`), fixed frame `odom`, face a flat wall: the scan line must be straight and at the measured distance; rotating in place must not smear the wall. Fix `lidar.x/y/yaw` in the robot YAML |
-| 9 | Map the demo space | `ros2 launch eyesteer_bringup slam.launch.py sim:=false robot:=<robot>`, drive slowly with teleop, then `ros2 run nav2_map_server map_saver_cli -f ~/maps/demo` |
+| 9 | Map the demo space | `ros2 launch eyesteer_bringup slam.launch.py sim:=false robot:=<robot>`, drive slowly with teleop, then `ros2 run nav2_map_server map_saver_cli -f ~/maps/demo`. The saved map's origin is where mapping started (that spot is (0, 0, 0)); later sessions give the robot's pose in this map with `start_pose:=x,y,yaw` or "2D Pose Estimate" (step 10) |
 | 10 | Localization + Nav2 | `real.launch.py map:=$HOME/maps/demo.yaml start_pose:=x,y,yaw`, set "2D Pose Estimate" in RViz, send "Nav2 Goal"s |
 | 11 | Mode manager + wander | field robot: WANDER starts once all gates are green; walker: ASSIST (push the handles) |
 | 12 | Headset | open `https://<jetson>:8443` in the Quest browser, accept the certificate (also open `https://<jetson>:9090` once and accept), consent, calibrate, place markers (§5) |

@@ -232,7 +232,12 @@ class MujocoBridge(Node):
             # real-time pacing
             target = wall0 + (t - sim0) / max(self.rtf, 1e-3)
             sl = target - time.monotonic()
-            if sl > 0:
+            if sl > 0.5:
+                # sim time ran ahead of the wall clock by more than one step can explain: never sleep it off
+                # (that freezes /clock and the whole stack); resync and say so
+                self.get_logger().warn(f"pacing: sim t={t:.3f} ahead by {sl:.2f} s (sim0={sim0:.3f}); resyncing")
+                wall0, sim0 = time.monotonic(), t
+            elif sl > 0:
                 time.sleep(sl)
             elif sl < -0.5:
                 wall0, sim0 = time.monotonic(), t   # fell behind: resync instead of sprinting
@@ -354,6 +359,9 @@ class MujocoBridge(Node):
 
 
 def main():
+    import faulthandler
+    import signal
+    faulthandler.register(signal.SIGUSR1, all_threads=True)   # `pkill -USR1 -f <node>`: dump all thread stacks
     rclpy.init()
     n = MujocoBridge()
     try:
