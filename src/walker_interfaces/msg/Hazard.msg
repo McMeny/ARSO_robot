@@ -21,3 +21,6 @@ uint8 state
 float32 frequency              # flicker frequency (Hz), 0 = no tag
 float32 contrast               # flicker contrast (0..1); higher = the stronger cue
 float32 confidence             # latest EEG score for this hazard (decoder units, 1 = noise level)
+float32 radius                 # radius of a circle around the object's footprint (m)
+bool registered                # the EEG showed the user saw it (state REGISTERED)
+bool eeg_valid                 # false if there is no reliable EEG signal right now

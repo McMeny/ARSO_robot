@@ -1,0 +1,16 @@
+# Nav2 velocity smoother, standalone: cmd_vel_tentacle in, cmd_vel_smoothed out.
+
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: True
+    smoothing_frequency: 20.0
+    scale_velocities: False
+    feedback: "OPEN_LOOP"               # closed loop brakes from the (lagging) measured speed: ~3x slower stops
+    max_velocity: [0.4, 0.0, 0.8]
+    min_velocity: [0.0, 0.0, -0.8]     # the walker never reverses on its own
+    max_accel: [0.3, 0.0, 0.8]
+    max_decel: [-0.5, 0.0, -0.8]
+    odom_topic: "odometry/filtered"
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    velocity_timeout: 0.5              # no command for this long -> ramp to zero

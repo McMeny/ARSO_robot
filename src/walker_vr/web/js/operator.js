@@ -29,10 +29,12 @@ $('check').onclick = () => link.send({ type: 'command', name: 'ssvep_check' });
 
 function render() {
   const state = walker.state || '–';
-  const kind = { NORMAL: 'ok', PROBING: 'ok', CAREFUL: 'warn', STOPPED: 'bad' }[state] || 'warn';
+  const kind = { NORMAL: 'ok', PROBING: 'ok', TURNING: 'ok', CAREFUL: 'warn', BLOCKED: 'warn', STOPPED: 'bad' }[state] || 'warn';
   $('walker').innerHTML = rows([
     ['Walking', enabled ? pill('yes', 'ok') : pill('stopped', 'bad')],
     ['State', pill(state, kind)],
+    ['Grip', walker.grip ? pill(walker.grip, { STOP: 'bad', WALK: 'ok', STEER: 'ok' }[walker.grip]) : '–'],
+    ['Message to user', walker.notice || walker.hint || 'none'],
     ['Speed cap', walker.speed_cap_percent !== undefined ? `${walker.speed_cap_percent}%` : '–'],
     ['Extra clearance', walker.extra_clearance ? `+${walker.extra_clearance} m` : 'none'],
     ['Steering', walker.machine_authority !== undefined
@@ -40,10 +42,11 @@ function render() {
   ]);
 
   const live = headset && Date.now() - headsetTime < 5000;
-  const fpsKind = live && headset.mode === 'vr' && Math.abs(headset.fps - 90) > 5 ? 'warn' : 'ok';
+  const fpsKind = live && headset.mode.startsWith('vr') && Math.abs(headset.fps - 90) > 5 ? 'warn' : 'ok';
   $('headset').innerHTML = rows([
     ['Flicker', flicker ? pill('allowed', 'ok') : pill('OFF', 'bad')],
-    ['Headset', live ? pill(headset.mode === 'vr' ? 'in VR' : 'desktop view', 'ok') : pill('not connected', 'warn')],
+    ['Mode', live ? `${headset.mode}${headset.guardian ? ' · Guardian known' : ''}` : '–'],
+    ['Headset', live ? pill(headset.mode.startsWith('vr') ? 'in VR' : 'desktop view', 'ok') : pill('not connected', 'warn')],
     ['Refresh rate', live ? `${pill(`${headset.fps} fps`, fpsKind)} ${fpsKind === 'warn' ? '(flicker is tuned for 90)' : ''}` : '–'],
   ]);
 

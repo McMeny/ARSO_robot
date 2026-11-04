@@ -19,6 +19,7 @@
 /hazards (walker_interfaces/HazardArray) for walker_brain, the headset and the logger;
 /hazard_markers for RViz.
 """
+import json
 import math
 
 import numpy as np
@@ -28,7 +29,7 @@ from nav_msgs.msg import Path
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, DurabilityPolicy, qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 from tf2_ros import Buffer, TransformListener, TransformException
 from visualization_msgs.msg import Marker, MarkerArray
 
@@ -103,6 +104,9 @@ class HazardTracker(Node):
         self.create_subscription(Path, 'plan', self.on_plan, 10)
         self.create_subscription(ProbeResult, 'probe_results', self.on_result, 50)
         self.create_subscription(Bool, 'flicker_enabled', self.on_flicker, latched)
+        self.create_subscription(String, 'eeg_status', self.on_eeg_status, 10)
+        self.eeg_ok_time = -math.inf    # last time the EEG signal was known to be good
+        self.eeg_timeout = p('eeg_valid_timeout', 3.0).value
         self.create_timer(0.2, self.update)
 
     def now(self):
@@ -144,7 +148,19 @@ class HazardTracker(Node):
                 t.detected = True
                 self.get_logger().info(f'Detected hazard {t.id} ({t.obj.name})')
 
+    def on_eeg_status(self, msg):
+        try:
+            if json.loads(msg.data).get('stream') == 'OK':
+                self.eeg_ok_time = self.now()
+        except ValueError:
+            pass
+
+    def eeg_valid(self):
+        return self.now() - self.eeg_ok_time < self.eeg_timeout
+
     def on_result(self, msg):
+        if msg.signal_ok:
+            self.eeg_ok_time = self.now()
         t = next((t for t in self.tracked if t.id == msg.hazard_id), None)
         if t is None or t.frequency == 0.0 or abs(t.frequency - msg.frequency) > 0.01:
             return  # result for a tag that has since changed
@@ -296,6 +312,9 @@ class HazardTracker(Node):
             h.lateral = t.lateral if math.isfinite(t.lateral) else 99.0
             h.relevant, h.state = t.relevant, t.state
             h.frequency, h.contrast, h.confidence = t.frequency, t.contrast, t.confidence
+            h.radius = t.obj.size_x / 2 if t.obj.kind == 'cylinder' else math.hypot(t.obj.size_x, t.obj.size_y) / 2
+            h.registered = t.state == Hazard.REGISTERED
+            h.eeg_valid = self.eeg_valid()
             msg.hazards.append(h)
             markers += self.markers_for(t, msg.header)
         self.pub.publish(msg)

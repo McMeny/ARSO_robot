@@ -10,11 +10,14 @@ One port (default 8443) serves:
 HTTPS if ~/.walker_vr/cert.pem exists (run: ros2 run walker_vr make_certs) - the Quest
 needs it. Without it, plain HTTP, which still works for http://localhost on this PC.
 
-ROS -> browsers: walker_pose (30 Hz), hazards, trajectory, walker_status, eeg_status,
-                 test_stimulus, head_pose (for the spectator), command (e.g. recentre)
-browsers -> ROS: head_pose -> /head_pose, headset_status -> /headset_status,
-                 walker_enabled -> /walker_enabled, flicker_enabled -> /flicker_enabled,
-                 command -> /operator_command
+ROS -> browsers: config (vr_mode etc.), walker_pose (30 Hz), hazards, trajectory (from
+                 /walker/trajectory + _left + _right, or the older /walker_trajectory), steering
+                 (/walker/steering_status: grip, authority, hint, notice...), walker_status,
+                 eeg_status, test_stimulus, head_pose (for the spectator), command (e.g. recentre)
+browsers -> ROS: head_pose -> /head_pose, grip -> /walker/grip_raw (the Quest's grip triggers),
+                 safety -> /walker/force_stop (room edge, user too far from the handles),
+                 headset_status -> /headset_status, walker_enabled -> /walker_enabled,
+                 flicker_enabled -> /flicker_enabled, command -> /operator_command
 """
 import json
 import math
@@ -28,6 +31,7 @@ import tornado.web
 import tornado.websocket
 from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Path
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, DurabilityPolicy
@@ -35,7 +39,7 @@ from std_msgs.msg import Bool, String
 from tf2_ros import Buffer, TransformListener, TransformException
 
 from my_robot_autonomy.world_model import load_world
-from walker_interfaces.msg import HazardArray, WalkerTrajectory
+from walker_interfaces.msg import GripState, HazardArray, SteeringStatus, WalkerTrajectory
 
 CERT_DIR = os.path.expanduser('~/.walker_vr')
 STATE_NAMES = ['waiting', 'probing', 'registered', 'missed', 'passed']
@@ -53,6 +57,15 @@ class Bridge(Node):
         self.world_file = p('world_file', '').value
         self.broadcast = broadcast
         self.latest = {}  # message type -> last message, sent to pages that connect later
+        self.config = {
+            'vr_mode': p('vr_mode', 'room_scale').value,                     # room_scale | stationary
+            'comfort_vignette': p('comfort_vignette', True).value,
+            'user_to_handle_offset': p('user_to_handle_offset', 0.4).value,  # m, hands in front of the head
+            'boundary_stop_margin': p('boundary_stop_margin', 0.5).value,    # m from the Guardian edge -> STOP
+            'max_user_handle_distance': p('max_user_handle_distance', 0.8).value,  # m head to handles -> STOP
+        }
+        self.edges = {'left': [], 'right': []}
+        self.steering = {}
 
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.head_pub = self.create_publisher(PoseStamped, 'head_pose', 10)
@@ -60,6 +73,12 @@ class Bridge(Node):
         self.enabled_pub = self.create_publisher(Bool, 'walker_enabled', latched)
         self.flicker_pub = self.create_publisher(Bool, 'flicker_enabled', latched)
         self.command_pub = self.create_publisher(String, 'operator_command', 10)
+        self.grip_pub = self.create_publisher(GripState, 'walker/grip_raw', 10)
+        self.force_stop_pub = self.create_publisher(Bool, 'walker/force_stop', 10)
+        self.create_subscription(Path, 'walker/trajectory', self.on_path, 10)
+        self.create_subscription(Path, 'walker/trajectory_left', lambda m: self.on_edge('left', m), 10)
+        self.create_subscription(Path, 'walker/trajectory_right', lambda m: self.on_edge('right', m), 10)
+        self.create_subscription(SteeringStatus, 'walker/steering_status', self.on_steering, 10)
 
         self.create_subscription(HazardArray, 'hazards', self.on_hazards, 10)
         self.create_subscription(WalkerTrajectory, 'walker_trajectory', self.on_trajectory, 10)
@@ -76,6 +95,7 @@ class Bridge(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.create_timer(1 / 30, self.send_walker_pose)
+        self.send('config', self.config)
 
     def send(self, kind, data, remember=True):
         message = json.dumps({'type': kind, **data})
@@ -97,7 +117,39 @@ class Bridge(Node):
             'size_x': h.size_x, 'size_y': h.size_y, 'height': h.height, 'yaw': h.yaw,
             'path_distance': round(h.path_distance, 2), 'lateral': round(h.lateral, 2),
             'relevant': h.relevant, 'state': STATE_NAMES[h.state], 'frequency': h.frequency,
-            'contrast': h.contrast, 'confidence': round(h.confidence, 2)} for h in msg.hazards]})
+            'contrast': h.contrast, 'confidence': round(h.confidence, 2),
+            'registered': h.registered, 'eeg_valid': h.eeg_valid} for h in msg.hazards]})
+
+    # ---------- the tentacle planner's trajectory and status ----------
+
+    def to_map(self, path):
+        """[[x, y], ...] in map from a Path in odom (map -> odom is fixed, but look it up anyway)."""
+        if path.header.frame_id in ('', 'map'):
+            return [[round(ps.pose.position.x, 3), round(ps.pose.position.y, 3)] for ps in path.poses]
+        try:
+            t = self.tf_buffer.lookup_transform('map', path.header.frame_id, rclpy.time.Time())
+        except TransformException:
+            return []
+        tx, ty, th = t.transform.translation.x, t.transform.translation.y, yaw_of(t.transform.rotation)
+        c, s = math.cos(th), math.sin(th)
+        return [[round(tx + c * ps.pose.position.x - s * ps.pose.position.y, 3),
+                 round(ty + s * ps.pose.position.x + c * ps.pose.position.y, 3)] for ps in path.poses]
+
+    def on_edge(self, side, msg):
+        self.edges[side] = self.to_map(msg)
+
+    def on_path(self, msg):
+        st = self.steering
+        mode = 'pivot' if st.get('turning_in_place') else 'blocked' if st.get('blocked') else 'drive'
+        self.send('trajectory', {'centre': self.to_map(msg), 'left': self.edges['left'], 'right': self.edges['right'],
+                                 'mode': mode, 'widened': bool(st.get('caution')) and bool(self.edges['left']),
+                                 'extra_clearance': 0.0, 'machine_authority': 1.0 - st.get('authority', 0.0)})
+
+    def on_steering(self, msg):
+        self.steering = {'grip': ['STOP', 'WALK', 'STEER'][min(msg.grip_state, 2)], 'authority': round(msg.authority, 2),
+                         'turning_in_place': msg.turning_in_place, 'blocked': msg.blocked, 'caution': msg.caution,
+                         'hint': msg.hint, 'notice': msg.notice}
+        self.send('steering', self.steering)
 
     def on_trajectory(self, msg):
         pts = lambda arr: [[round(p.x, 3), round(p.y, 3)] for p in arr]
@@ -119,6 +171,14 @@ class Bridge(Node):
             pose.pose.orientation.y, pose.pose.orientation.z = cy * sp, sy * cp
             self.head_pub.publish(pose)
             self.send('head_pose', data, remember=False)
+        elif kind == 'grip':
+            g = GripState()
+            g.header.stamp = self.get_clock().now().to_msg()
+            g.left, g.right = float(data['left']), float(data['right'])
+            self.grip_pub.publish(g)
+        elif kind == 'safety':
+            self.force_stop_pub.publish(Bool(data=bool(data['stop'])))
+            self.send('safety', data)
         elif kind == 'headset_status':
             self.headset_pub.publish(String(data=json.dumps(data)))
             self.send('headset_status', data)

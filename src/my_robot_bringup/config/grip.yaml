@@ -1,0 +1,16 @@
+# Grip state (STOP / WALK / STEER) - see my_robot_autonomy/grip_state_node.py.
+
+grip_state:
+  ros__parameters:
+    source: quest                # quest | keyboard | arduino | operator (set by the launch file's grip:= argument)
+    light_threshold: 0.2         # normalised 0..1 - both hands at or above: WALK
+    firm_threshold: 0.6          # both at or above, for steer_hold_s: STEER
+    hysteresis: 0.05
+    release_grace_s: 0.2         # a hand below light for longer than this: STOP
+    steer_hold_s: 0.5            # shorter firm squeezes (startle) are ignored
+    one_handed: false
+    hand: right                  # the hand used when one_handed
+    raw_timeout: 0.3             # s without readings -> released
+    serial_port: /dev/ttyACM0    # arduino
+    baud: 115200
+    adc_max: 1023.0

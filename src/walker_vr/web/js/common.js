@@ -144,6 +144,18 @@ export class HazardTags {
     }
   }
 
+  // directions (yaw about three's +y, from the camera) of the tags that are showing
+  visibleDirections(camera) {
+    const head = camera.getWorldPosition(new THREE.Vector3());
+    const out = [];
+    for (const tag of this.tags.values()) {
+      if (!tag.mesh.visible) continue;
+      const p = tag.mesh.position;
+      out.push(Math.atan2(-(p.x - head.x), -(p.z - head.z)));
+    }
+    return out;
+  }
+
   // t in seconds, from the display's frame clock
   animate(t, dt) {
     for (const tag of this.tags.values()) {
@@ -189,6 +201,11 @@ function ribbon(points, width) {
 }
 
 export class Trajectory {
+  // Static, faint floor lines - no flicker, no animation.
+  //   drive    centre + edges; edges more solid as the machine takes over (authority -> 0),
+  //            brighter (orange) where they widen round an unregistered hazard
+  //   pivot    the footprint where the turn on the spot will end, and its corners' arcs
+  //   blocked  a short footprint outline just in front of the walker, amber
   constructor(scene) {
     this.centre = new THREE.Mesh(new THREE.BufferGeometry(),
       new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
@@ -199,9 +216,10 @@ export class Trajectory {
 
   update(t) {
     if (!t.centre || t.centre.length < 2) return;
+    const mode = t.mode || 'drive';
     this.centre.geometry.dispose();
-    this.centre.geometry = ribbon(t.centre, 0.025);
-    const left = ribbon(t.left, 0.04), right = ribbon(t.right, 0.04);
+    this.centre.geometry = ribbon(t.centre, mode === 'drive' ? 0.025 : 0.04);
+    const left = ribbon(t.left || [], 0.04), right = ribbon(t.right || [], 0.04);
     const merged = new THREE.BufferGeometry();
     const a = left.getAttribute('position').array, b = right.getAttribute('position').array;
     const all = new Float32Array(a.length + b.length);
@@ -209,10 +227,83 @@ export class Trajectory {
     merged.setAttribute('position', new THREE.BufferAttribute(all, 3));
     this.edges.geometry.dispose();
     this.edges.geometry = merged;
-    const solid = 0.35 + 0.6 * (t.machine_authority ?? 1);   // more solid as the machine takes over
-    this.edges.material.opacity = solid;
-    this.centre.material.opacity = solid * 0.7;
-    this.edges.material.color.set(t.extra_clearance > 0 ? 0xffa040 : 0x40e0ff);  // widened berth shows orange
+    const solid = 0.3 + 0.5 * (t.machine_authority ?? 1);   // more solid as the machine takes over
+    const widened = t.widened || t.extra_clearance > 0;
+    this.edges.material.opacity = Math.min(1, solid + (widened ? 0.3 : 0));
+    this.edges.material.color.set(widened ? 0xffb050 : 0x40e0ff);
+    if (mode === 'blocked') {
+      this.centre.material.color.set(0xffb000);
+      this.centre.material.opacity = 0.85;
+    } else {
+      this.centre.material.color.set(0xffffff);
+      this.centre.material.opacity = mode === 'pivot' ? 0.6 : solid * 0.7;
+    }
+  }
+}
+
+// ---------- hint / notice text ----------
+// A text panel low in view that follows the head loosely (not head-locked), with an optional
+// hand-squeeze icon. It slides sideways if it would sit over a hazard tag.
+
+function drawSqueezeIcon(ctx, x, y, size, colour) {
+  ctx.save();
+  ctx.strokeStyle = colour; ctx.fillStyle = colour; ctx.lineWidth = size * 0.07; ctx.lineCap = 'round';
+  // the handle
+  ctx.beginPath(); ctx.moveTo(x - size * 0.45, y + size * 0.15); ctx.lineTo(x + size * 0.45, y + size * 0.15); ctx.stroke();
+  // a fist round it
+  ctx.beginPath(); ctx.roundRect(x - size * 0.2, y - size * 0.15, size * 0.4, size * 0.4, size * 0.1); ctx.fill();
+  // squeeze arrows
+  for (const s of [-1, 1]) {
+    const ax = x + s * size * 0.42, ay = y - size * 0.3;
+    ctx.beginPath(); ctx.moveTo(ax + s * size * 0.12, ay); ctx.lineTo(ax - s * size * 0.08, ay); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ax - s * size * 0.08, ay - size * 0.08); ctx.lineTo(ax - s * size * 0.08, ay + size * 0.08); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+export class TextPanel {
+  constructor(scene, { icon = true, colour = '#ffffff' } = {}) {
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = 1024; this.canvas.height = 160;
+    this.texture = new THREE.CanvasTexture(this.canvas);
+    this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.14),
+      new THREE.MeshBasicMaterial({ map: this.texture, transparent: true, depthTest: false, depthWrite: false }));
+    this.mesh.renderOrder = 20;
+    this.mesh.visible = false;
+    scene.add(this.mesh);
+    this.icon = icon; this.colour = colour; this.text = '';
+    this.yaw = null;
+  }
+
+  draw(text) {
+    const ctx = this.canvas.getContext('2d');
+    ctx.clearRect(0, 0, 1024, 160);
+    ctx.fillStyle = 'rgba(20, 24, 30, 0.75)';
+    ctx.beginPath(); ctx.roundRect(4, 4, 1016, 152, 40); ctx.fill();
+    ctx.fillStyle = this.colour; ctx.font = '600 58px sans-serif'; ctx.textBaseline = 'middle';
+    const x = this.icon ? 170 : 50;
+    if (this.icon) drawSqueezeIcon(ctx, 90, 80, 110, this.colour);
+    ctx.fillText(text, x, 82, 1024 - x - 40);
+    this.texture.needsUpdate = true;
+  }
+
+  // drop: metres below eye level; avoid: directions (yaw, rad) of visible hazard tags
+  show(text, camera, drop, avoid, dt) {
+    if (text !== this.text) { this.text = text; if (text) this.draw(text); }
+    this.mesh.visible = !!text;
+    if (!text) { this.yaw = null; return; }
+    const head = camera.getWorldPosition(new THREE.Vector3());
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
+    let want = Math.atan2(-fwd.x, -fwd.z);
+    for (const a of avoid) {                      // keep 20 deg clear of any tag
+      const d = Math.atan2(Math.sin(want - a), Math.cos(want - a));
+      if (Math.abs(d) < 0.35) want = a + (d >= 0 ? 0.35 : -0.35);
+    }
+    if (this.yaw === null) this.yaw = want;
+    const d = Math.atan2(Math.sin(want - this.yaw), Math.cos(want - this.yaw));
+    this.yaw += d * Math.min(dt * 2.0, 1);        // follows the head loosely
+    this.mesh.position.set(head.x - 1.4 * Math.sin(this.yaw), head.y + drop, head.z - 1.4 * Math.cos(this.yaw));
+    this.mesh.rotation.set(0, this.yaw, 0);
   }
 }
 

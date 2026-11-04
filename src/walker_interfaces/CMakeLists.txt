@@ -12,6 +12,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ProbeResult.msg"
   "msg/WalkerTrajectory.msg"
   "msg/Tentacles.msg"
+  "msg/GripState.msg"
+  "msg/SteeringStatus.msg"
   DEPENDENCIES std_msgs geometry_msgs
 )
 

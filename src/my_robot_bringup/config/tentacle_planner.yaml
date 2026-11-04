@@ -1,0 +1,67 @@
+# The tentacle planner - see my_robot_autonomy/tentacle_planner_node.py and tentacle_core.py.
+
+tentacle_planner:
+  ros__parameters:
+    # tentacles
+    num_tentacles: 31            # arcs, curvature evenly spaced in [-k_max, +k_max], including straight
+    k_max: 1.5                   # 1/m (tightest radius 0.67 m)
+    lane_change: true            # also S-shaped lane-change tentacles (curve, then back: ends parallel, shifted)
+    lane_change_k_max: 1.0
+    required_free: 0.7           # m a tentacle must be clear for to count (brief: its whole length)
+    horizon_s: 2.0               # tentacle length L = clamp(v * horizon_s, L_min, L_max)
+    L_min: 2.5                   # m (brief: 1.0 - at walker speed that is always 1 m, too short to swerve gently)
+    L_max: 2.5                   # m
+    # footprint: the walker AND the user behind it (base_footprint = rear axle)
+    footprint_length: 1.25       # m, walker front (0.46) to the user's back (-0.79)
+    footprint_width: 0.6         # m
+    footprint_offset_x: -0.165   # m, centre of the rectangle
+    safety_margin: 0.12          # m - more than the collision monitor's stop zone, so it never has to act
+    self_filter: true            # ignore lidar points inside the footprint (the user's legs)
+    # cost weights:  J = w_clear*clearance + w_free*clear length + w_head(t)*heading + w_hazard*berths + w_hyst*|dk| + w_curv*|k|
+    w_clear: 0.3
+    w_free: 1.5                  # shorter clear length costs more
+    clearance_cap: 1.0           # m - clearances above this count the same
+    w_head_max: 2.0              # per rad, with full authority
+    w_hazard: 1.0
+    berth_registered: 0.15       # m beside the walker's side - registered hazard
+    berth_unregistered: 0.45     # m - not registered, or no reliable EEG
+    w_hyst: 0.5
+    w_curv: 0.3
+    heading_near: 0.6            # m along a tentacle where its heading is judged (head, WALK heading)...
+    heading_far: 1.2             # ...and here
+    w_return: 0.8                # WALK: back to the heading WALK started with (after going round something)
+    walk_max_turn_deg: 45.0      # WALK never turns further than this on its own (a junction needs STEER)
+    # risk-scaled authority, from the clearance around the footprint
+    c_low: 0.15                  # m -> machine fully in charge
+    c_high: 0.8                  # m -> head fully in charge
+    # speed
+    v_max: 0.4                   # m/s
+    omega_max: 0.8               # rad/s
+    accel: 0.3                   # m/s^2
+    decel: 0.3
+    stop_decel: 0.5              # grip released, or blocked
+    turn_accel: 0.8              # rad/s^2
+    caution_scale: 0.5           # speed factor with an unregistered / no-EEG hazard within caution_radius ahead
+    caution_radius: 2.0          # m
+    slow_length: 1.2             # m clear ahead along the chosen tentacle for full speed
+    stop_length: 0.1
+    min_speed_scale: 0.2
+    # head
+    head_filter_time: 0.6        # s low-pass
+    head_timeout: 1.0            # s without head data -> no head steering
+    hazard_look_exclusion_deg: 10.0  # looking at a tagged hazard is the probe, not a direction
+    # turning in place (STEER)
+    pivot_speed_threshold: 0.05  # m/s
+    pivot_angle_deg: 60.0
+    blocked_pivot_angle_deg: 20.0   # when blocked, a smaller head turn is enough to pivot
+    pivot_done_angle_deg: 10.0
+    omega_pivot: 0.4             # rad/s
+    # hint and notice
+    hint_angle_deg: 30.0
+    hint_dwell_s: 3.0
+    hint_cooldown_s: 30.0
+    hint_max_successes: 3
+    blocked_notice_delay_s: 1.0
+    # floor lines
+    edge_half_width: 0.25        # m, the walker's own half-width
+    berth_display_extra: 0.12    # m the edges widen by near an unregistered hazard
