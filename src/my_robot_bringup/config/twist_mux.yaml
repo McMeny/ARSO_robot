@@ -11,6 +11,11 @@ twist_mux:
         topic: cmd_vel
         timeout: 0.5
         priority: 10
+      # forward_goal's slow reverse, only when the walker is boxed in (teleop still wins)
+      recovery:
+        topic: cmd_vel_recovery
+        timeout: 0.5
+        priority: 90
       joystick:
         topic: cmd_vel_joy
         timeout: 0.5

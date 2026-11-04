@@ -20,6 +20,10 @@ The machine's own turning: when something WIDE (a wall, an aisle end) is within
 turn_trigger, it turns turn_step every update towards the more open side (or the side
 the user is looking, if that side is open) - a smooth, progressive curve.
 
+Boxed in (stuck, and every tentacle blocked within boxed_in_distance): it cancels the goal and
+reverses slowly (reverse_speed for reverse_time, on cmd_vel_recovery) - Nav2's own back-up and spin
+recoveries are switched off, so this is the only way the walker ever reverses.
+
 Publishes /machine_authority (0 = the head steers, 1 = the machine is fully in charge).
 Stops sending goals (and cancels the current one) while /walker_enabled is false.
 """
@@ -27,7 +31,7 @@ import math
 
 import rclpy
 from action_msgs.msg import GoalStatus
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Twist
 from nav2_msgs.action import NavigateToPose
 from nav_msgs.msg import OccupancyGrid
 from rclpy.action import ActionClient
@@ -71,12 +75,18 @@ class ForwardGoal(Node):
         self.open_clearance = p('open_clearance', 2.5).value
         self.near_clearance = p('near_clearance', 0.8).value
         self.head_timeout = p('head_timeout', 1.0).value
+        self.boxed_in_distance = p('boxed_in_distance', 0.25).value
+        self.reverse_speed = p('reverse_speed', 0.05).value
+        self.reverse_time = p('reverse_time', 4.0).value
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.nav = ActionClient(self, NavigateToPose, 'navigate_to_pose')
         self.marker_pub = self.create_publisher(MarkerArray, 'walker_markers', 10)
         self.authority_pub = self.create_publisher(Float32, 'machine_authority', 10)
+        self.reverse_pub = self.create_publisher(Twist, 'cmd_vel_recovery', 10)
+        self.reverse_until = -math.inf
+        self.create_timer(0.1, self.reverse_tick)
 
         self.costmap = None
         costmap_qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL,
@@ -232,13 +242,19 @@ class ForwardGoal(Node):
         ahead = self.free_distance(x, y, self.heading, self.goal_distance, NEAR_OBSTACLE)
         distances = [self.goal_distance] if ahead >= self.goal_distance else [max(ahead - 0.3, 1.0)]
         distances += [d for d in (2.0, 1.5, 1.0) if d < distances[0]]
+        best, best_cost = None, LETHAL
         for d in distances:
             for side in (0.0, 0.4, -0.4, 0.8, -0.8):
                 gx = x + d * math.cos(self.heading) - side * math.sin(self.heading)
                 gy = y + d * math.sin(self.heading) + side * math.cos(self.heading)
-                if 0 <= self.cost_at(gx, gy) <= GOAL_MAX_COST or self.cost_at(gx, gy) == -1:
+                cost = self.cost_at(gx, gy)
+                if 0 <= cost <= GOAL_MAX_COST or cost == -1:
                     return gx, gy
-        return None
+                if 0 <= cost < best_cost:
+                    best, best_cost = (gx, gy), cost
+        # in a tight space (or with the berth widened) nowhere may be fully clear - take the spot
+        # furthest from obstacles that's still safe, rather than waiting
+        return best
 
     def send_goal(self, gx, gy):
         goal = NavigateToPose.Goal()
@@ -287,6 +303,18 @@ class ForwardGoal(Node):
             self.get_logger().warn('Nav2 could not reach the goal')
             self.goal_failed = True
 
+    # ---------- boxed in ----------
+
+    def boxed_in(self):
+        return (self.tentacles is not None and self.tentacles.free_lengths
+                and max(self.tentacles.free_lengths) < self.boxed_in_distance)
+
+    def reverse_tick(self):
+        if self.now() < self.reverse_until and self.enabled:
+            msg = Twist()
+            msg.linear.x = -self.reverse_speed
+            self.reverse_pub.publish(msg)
+
     # ---------- main loop ----------
 
     def update(self):
@@ -309,7 +337,18 @@ class ForwardGoal(Node):
         # stuck (or Nav2 gave up) -> make a bigger turn towards the more open side
         if math.hypot(x - self.progress_pose[0], y - self.progress_pose[1]) > 0.3:
             self.progress_pose, self.progress_time = (x, y), now
+        if now < self.reverse_until:
+            return  # reversing out
         if self.goal_failed or now - self.progress_time > self.stuck_time:
+            if self.boxed_in():
+                self.get_logger().warn(f'Boxed in - reversing {self.reverse_speed * self.reverse_time:.2f} m slowly')
+                if self.goal_handle is not None:
+                    self.goal_handle.cancel_goal_async()
+                    self.goal_handle = None
+                self.reverse_until = now + self.reverse_time
+                self.progress_pose, self.progress_time = (x, y), now + self.reverse_time
+                self.last_send_time = -math.inf
+                return
             left = self.openness(x, y, self.heading + math.radians(90))
             right = self.openness(x, y, self.heading - math.radians(90))
             self.heading = wrap(self.heading + math.radians(45 if left > right else -45))

@@ -7,6 +7,8 @@ hazard_tracker:
     hazard_name_prefixes: ["aisle", "back_aisle", "main_aisle"]
     probe_start_distance: 4.0   # m ahead (from the walker's front) when probing starts
     decision_distance: 2.5      # m ahead - escalate here if the hazard still isn't registered
+    min_probe_time: 3.0         # s - a hazard that appears late still gets this long before escalating...
+    last_decision_distance: 1.2 # m - ...unless it gets this close
     near_path_margin: 0.6       # m - an obstacle this close to the path counts as "on or near" it
     max_simultaneous: 2         # hazards probed at once; the rest wait in a queue
     # Flicker frequencies (Hz), most preferred first (90 Hz headset: 90/12, 90/7, 90/13, 90/14).

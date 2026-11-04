@@ -61,6 +61,7 @@ class Tracked:
         self.lateral = math.inf
         self.relevant = False
         self.off_path_since = None   # when an active probe's hazard first looked off the path
+        self.probe_started = None    # when the current tag started flickering
 
 
 class HazardTracker(Node):
@@ -79,6 +80,10 @@ class HazardTracker(Node):
         self.min_hits = p('min_hits', 3).value
         self.front = p('front_offset', 0.46).value
         self.off_path_time = p('off_path_time', 2.0).value  # s off the path before an active probe is dropped
+        # a hazard that only shows up late still gets min_probe_time of flicker before it can be escalated,
+        # unless it gets closer than last_decision_distance
+        self.min_probe_time = p('min_probe_time', 3.0).value
+        self.last_decision = p('last_decision_distance', 1.2).value
 
         objects = [o for o in load_world(world_file) if any(o.name.startswith(pre) for pre in self.hazard_prefixes)]
         self.tracked = [Tracked(o, i + 1) for i, o in enumerate(objects)]
@@ -254,12 +259,18 @@ class HazardTracker(Node):
                         t.frequency = f
                         if t.state == Hazard.WAITING:
                             t.contrast, t.state = self.subtle, Hazard.PROBING
+                            t.probe_started = self.now()
                         else:
                             t.contrast = self.strong  # missed while queued - tag it with the strong cue
                         self.get_logger().info(f'Probing hazard {t.id} ({t.obj.name}) at {f:.2f} Hz, '
                                                f'{t.path_distance:.1f} m ahead')
-            # decision distance reached without a "present" -> escalate
-            if t.state in (Hazard.WAITING, Hazard.PROBING) and t.path_distance <= self.decision:
+            # decision distance reached without a "present" -> escalate. A probe that started late gets
+            # min_probe_time first (the decoder needs ~2-3 s), but never past last_decision_distance.
+            probed_long_enough = (t.state != Hazard.PROBING or t.probe_started is None
+                                  or self.now() - t.probe_started >= self.min_probe_time)
+            too_close = t.path_distance <= self.last_decision
+            if (t.state in (Hazard.WAITING, Hazard.PROBING) and t.path_distance <= self.decision
+                    and (probed_long_enough or too_close)):
                 t.state = Hazard.MISSED
                 t.contrast = self.strong if t.frequency > 0 else 0.0
                 self.get_logger().warn(f'Hazard {t.id} ({t.obj.name}) MISSED - not registered by '

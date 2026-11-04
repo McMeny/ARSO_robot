@@ -1,9 +1,8 @@
 <!--
-  Nav2's default navigate-to-pose tree (replans at 1 Hz) WITHOUT the Spin recovery - a
-  walker must never suddenly spin on the spot. When stuck it clears its costmaps and waits,
-  and only as a last resort backs up 20 cm, slowly (5 cm/s) - otherwise a walker boxed in
-  with its front against something could never get out. On a real walker this last step
-  should become a prompt to the user instead, since they stand behind it.
+  Nav2's default navigate-to-pose tree (replans at 1 Hz) WITHOUT the Spin and BackUp
+  recoveries - a walker must never suddenly spin on the spot, and Nav2 would otherwise back up
+  every time its controller struggles. When stuck it clears its costmaps and waits.
+  Reversing is left to forward_goal, which does it only when the walker is truly boxed in.
 -->
 <root main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
@@ -28,7 +27,6 @@
             <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
           </Sequence>
           <Wait wait_duration="3"/>
-          <BackUp backup_dist="0.20" backup_speed="0.05"/>
         </RoundRobin>
       </ReactiveFallback>
     </RecoveryNode>
