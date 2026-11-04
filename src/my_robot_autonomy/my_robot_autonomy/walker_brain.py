@@ -1,80 +1,126 @@
-"""Decides how fast Nav2 may drive, from the lidar and the human cross-check.
+"""Decides how cautiously the walker handles the hazards ahead, and whether it moves at all.
 
-/obstacle_ahead (Bool) + /human_aware (Bool)  ->  /speed_limit (nav2_msgs/SpeedLimit)
+Speed - the lowest limit always wins:  actual = lowest of (grip, hazard cap, collision monitor)
+  grip        - /walker_enabled (the VR build's stand-in for the grip lever; the operator
+                presses Start / Stop walking). Released -> the walker is held at zero.
+  hazard cap  - 100 % normally; careful_percent while any MISSED hazard is ahead.
+                Sent to Nav2 on /speed_limit. The EEG can only ever lower the ceiling.
 
-  CRUISE         no obstacle                       -> 100 %
-  NORMAL_AVOID   obstacle, human aware of it       -> 100 %
-  CAREFUL_AVOID  obstacle, human NOT aware of it   -> careful_percent (30 %)
+Wider berth - while a MISSED hazard is ahead, the costmaps' inflation is widened
+  (inflation_radius / cost_scaling_factor), so Nav2 plans further away from obstacles.
 
-Back to CRUISE only after the path has been clear for clear_time (1 s), so it
-doesn't flicker. If /human_aware stops arriving, the human counts as not aware.
+Stop when commands stop - publishes zeros on cmd_vel_idle (the lowest twist_mux input),
+  so if Nav2 or teleop go silent the walker gets 0 instead of carrying on at its last speed.
+  While the grip is released it publishes zeros on cmd_vel_stop (above every other input).
+
+Publishes /walker_status (JSON) and a floating state label for RViz.
 """
+import json
+
 import rclpy
-from rclpy.node import Node
+from geometry_msgs.msg import Twist
 from nav2_msgs.msg import SpeedLimit
-from std_msgs.msg import Bool, String
+from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
+from rcl_interfaces.srv import SetParameters
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, DurabilityPolicy
+from std_msgs.msg import Bool, Float32, String
 from visualization_msgs.msg import Marker, MarkerArray
 
-CRUISE, NORMAL_AVOID, CAREFUL_AVOID = 'CRUISE', 'NORMAL_AVOID', 'CAREFUL_AVOID'
+from walker_interfaces.msg import Hazard, HazardArray
+
+COSTMAPS = ['/local_costmap/local_costmap', '/global_costmap/global_costmap']
+
+
+def double_param(name, value):
+    return Parameter(name=name, value=ParameterValue(type=ParameterType.PARAMETER_DOUBLE, double_value=float(value)))
 
 
 class WalkerBrain(Node):
     def __init__(self):
         super().__init__('walker_brain')
-        self.careful_percent = self.declare_parameter('careful_percent', 30.0).value
-        self.clear_time = self.declare_parameter('clear_time', 1.0).value
-        self.human_timeout = self.declare_parameter('human_timeout', 1.0).value
+        p = self.declare_parameter
+        self.careful_percent = p('careful_percent', 40.0).value
+        self.extra_clearance = p('extra_clearance', 0.35).value
+        self.normal_inflation = p('normal_inflation_radius', 0.55).value
+        self.normal_scaling = p('normal_cost_scaling', 3.0).value
+        self.wide_scaling = p('wide_cost_scaling', 1.5).value
+        self.enabled = p('start_enabled', True).value
 
-        self.state = CRUISE
-        self.obstacle = False
-        self.last_obstacle_time = None
-        self.human_aware = False
-        self.last_human_time = None
+        self.hazards = []
+        self.authority = 1.0
+        self.berth_wide = None   # unknown until first set
+        self.berth_pending = None
 
+        latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.speed_pub = self.create_publisher(SpeedLimit, 'speed_limit', 10)
-        self.state_pub = self.create_publisher(String, 'walker_state', 10)
+        self.stop_pub = self.create_publisher(Twist, 'cmd_vel_stop', 10)
+        self.idle_pub = self.create_publisher(Twist, 'cmd_vel_idle', 10)
+        self.status_pub = self.create_publisher(String, 'walker_status', latched)
         self.marker_pub = self.create_publisher(MarkerArray, 'walker_markers', 10)
-        self.create_subscription(Bool, 'obstacle_ahead', self.on_obstacle, 10)
-        self.create_subscription(Bool, 'human_aware', self.on_human, 10)
+        self.create_subscription(HazardArray, 'hazards', lambda m: setattr(self, 'hazards', m.hazards), 10)
+        self.create_subscription(Bool, 'walker_enabled', self.on_enabled, latched)
+        self.create_subscription(Float32, 'machine_authority', lambda m: setattr(self, 'authority', m.data), 10)
+        self.param_clients = {c: self.create_client(SetParameters, c + '/set_parameters') for c in COSTMAPS}
         self.create_timer(0.1, self.update)
+        self.get_logger().info('Walker ' + ('enabled' if self.enabled else 'waiting for Start walking'))
 
-    def now(self):
-        return self.get_clock().now().nanoseconds / 1e9
+    def on_enabled(self, msg):
+        if msg.data != self.enabled:
+            self.get_logger().info('Start walking' if msg.data else 'Stop walking')
+        self.enabled = msg.data
 
-    def on_obstacle(self, msg):
-        self.obstacle = msg.data
-        if msg.data:
-            self.last_obstacle_time = self.now()
-
-    def on_human(self, msg):
-        self.human_aware = msg.data
-        self.last_human_time = self.now()
+    def set_berth(self, wide):
+        """Widen (or restore) the costmaps' inflation - the 'wider berth' for a missed hazard."""
+        if wide == self.berth_wide:
+            return
+        radius = self.normal_inflation + (self.extra_clearance if wide else 0.0)
+        scaling = self.wide_scaling if wide else self.normal_scaling
+        ready = all(c.service_is_ready() for c in self.param_clients.values())
+        if not ready:
+            return  # Nav2 not up yet - try again next cycle
+        for client in self.param_clients.values():
+            req = SetParameters.Request(parameters=[
+                double_param('inflation_layer.inflation_radius', radius),
+                double_param('inflation_layer.cost_scaling_factor', scaling)])
+            client.call_async(req)
+        self.berth_wide = wide
+        self.get_logger().info(f'Berth {"WIDENED" if wide else "normal"}: inflation {radius:.2f} m')
 
     def update(self):
-        now = self.now()
-        human_ok = (self.human_aware and self.last_human_time is not None
-                    and now - self.last_human_time < self.human_timeout)
-        recently_blocked = (self.last_obstacle_time is not None
-                            and now - self.last_obstacle_time < self.clear_time)
+        missed_ahead = [h for h in self.hazards if h.state == Hazard.MISSED and h.path_distance > -0.3]
+        escalated = bool(missed_ahead)
 
-        if self.obstacle or recently_blocked:
-            new_state = NORMAL_AVOID if human_ok else CAREFUL_AVOID
+        if not self.enabled:
+            state = 'STOPPED'
+        elif escalated:
+            state = 'CAREFUL'
+        elif any(h.state == Hazard.PROBING for h in self.hazards):
+            state = 'PROBING'
         else:
-            new_state = CRUISE
+            state = 'NORMAL'
+        cap = self.careful_percent if escalated else 100.0
 
-        if new_state != self.state:
-            self.get_logger().info(f'{self.state} -> {new_state}')
-            self.state = new_state
-
-        # sent every cycle, so a restarted Nav2 still gets the current limit
         limit = SpeedLimit()
         limit.header.stamp = self.get_clock().now().to_msg()
         limit.percentage = True
-        limit.speed_limit = self.careful_percent if self.state == CAREFUL_AVOID else 100.0
+        limit.speed_limit = cap
         self.speed_pub.publish(limit)
-        self.state_pub.publish(String(data=self.state))
+        self.idle_pub.publish(Twist())
+        if not self.enabled:
+            self.stop_pub.publish(Twist())
+        self.set_berth(escalated)
 
-        # floating label above the robot in RViz, e.g. "CAREFUL_AVOID 30%"
+        status = {
+            'state': state,
+            'enabled': self.enabled,
+            'speed_cap_percent': cap,
+            'extra_clearance': self.extra_clearance if escalated else 0.0,
+            'missed_hazards': [h.id for h in missed_ahead],
+            'machine_authority': round(self.authority, 2),
+        }
+        self.status_pub.publish(String(data=json.dumps(status)))
+
         label = Marker()
         label.header.frame_id = 'base_footprint'
         label.ns, label.id = 'walker_state', 0
@@ -83,7 +129,7 @@ class WalkerBrain(Node):
         label.pose.orientation.w = 1.0
         label.scale.z = 0.25
         label.color.r = label.color.g = label.color.b = label.color.a = 1.0
-        label.text = f'{self.state}  {limit.speed_limit:.0f}%'
+        label.text = f'{state}  {cap:.0f}%  head {100 * (1 - self.authority):.0f}%'
         self.marker_pub.publish(MarkerArray(markers=[label]))
 
 

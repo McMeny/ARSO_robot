@@ -60,7 +60,9 @@ def generate_launch_description():
     # Create our own temporary YAML files that include substitutions
     param_substitutions = {
         'use_sim_time': use_sim_time,
-        'autostart': autostart}
+        'autostart': autostart,
+        # the walker's behaviour tree - no Spin or BackUp recoveries
+        'default_nav_to_pose_bt_xml': os.path.join(bringup_dir, 'behavior_trees', 'navigate_no_spin.xml')}
 
     configured_params = ParameterFile(
         RewrittenYaml(

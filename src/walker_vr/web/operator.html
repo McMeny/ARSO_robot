@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Walker Operator</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="operator">
+  <h1>Walker operator <span id="conn" class="pill warn">connecting…</span></h1>
+  <div class="cards">
+    <section class="card">
+      <h2>Walker</h2>
+      <div class="big-buttons">
+        <button id="start" class="go">Start walking</button>
+        <button id="stop" class="stop">Stop walking</button>
+      </div>
+      <p class="kv" id="walker"></p>
+    </section>
+
+    <section class="card">
+      <h2>Flicker and headset</h2>
+      <div class="big-buttons">
+        <button id="flicker-off" class="stop">Stop flicker</button>
+        <button id="flicker-on">Allow flicker</button>
+        <button id="recentre">Recentre</button>
+      </div>
+      <p class="kv" id="headset"></p>
+    </section>
+
+    <section class="card">
+      <h2>EEG</h2>
+      <div class="big-buttons"><button id="check">SSVEP check</button></div>
+      <p class="kv" id="eeg"></p>
+      <p class="muted" id="check-result"></p>
+    </section>
+
+    <section class="card wide">
+      <h2>Hazards</h2>
+      <table>
+        <thead><tr><th>#</th><th>Object</th><th>State</th><th>Ahead</th><th>Gap to path</th>
+          <th>Frequency</th><th>EEG score</th></tr></thead>
+        <tbody id="hazards"><tr><td colspan="7" class="muted">None detected yet</td></tr></tbody>
+      </table>
+    </section>
+  </div>
+</main>
+<script type="module" src="js/operator.js"></script>
+</body>
+</html>

@@ -203,7 +203,7 @@ Visualization Manager:
     Value: true
   - Class: rviz_default_plugins/MarkerArray
     Enabled: true
-    Name: Walker (lane, goal, state)
+    Name: Walker (goal, state)
     Namespaces: {}
     Topic:
       Depth: 5
@@ -211,6 +211,39 @@ Visualization Manager:
       History Policy: Keep Last
       Reliability Policy: Reliable
       Value: /walker_markers
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: Floor trajectory (2 s)
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /trajectory_markers
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: Tentacles (open ways forward)
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /tentacle_markers
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: Hazards (state, frequency)
+    Namespaces: {}
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /hazard_markers
     Value: true
   - Class: rviz_default_plugins/Image
     Enabled: false

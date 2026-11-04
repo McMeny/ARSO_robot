@@ -1,5 +1,13 @@
 <launch>
     <arg name = "autonomy" default = "true" />
+    <!-- vr:=true adds the hazard loop, the EEG decoder, the headset web server and session logging.
+         The walker then waits for Start walking on the operator page. -->
+    <arg name = "vr" default = "false" />
+    <!-- eeg:=muse reads the real Muse over LSL; eeg:=emulator simulates one -->
+    <arg name = "eeg" default = "emulator" />
+    <arg name = "emulator_detect_prob" default = "0.8" />
+    <!-- gazebo_view:=true also opens Gazebo's 3D window on the running simulation -->
+    <arg name = "gazebo_view" default = "false" />
 
     <let name = "urdf_path"
         value = "$(find-pkg-share my_robot_description)/urdf/my_robot.urdf.xacro" />
@@ -13,6 +21,14 @@
         value = "$(find-pkg-share my_robot_bringup)/rviz/walker.rviz" />
     <let name = "ekf_params_path"
         value = "$(find-pkg-share my_robot_bringup)/config/ekf.yaml" />
+    <let name = "hazards_params_path"
+        value = "$(find-pkg-share my_robot_bringup)/config/hazards.yaml" />
+    <let name = "head_params_path"
+        value = "$(find-pkg-share my_robot_bringup)/config/head_steering.yaml" />
+    <let name = "eeg_params_path"
+        value = "$(find-pkg-share my_robot_bringup)/config/eeg.yaml" />
+    <!-- without VR the walker drives straight away; with VR it waits for the operator -->
+    <let name = "start_enabled" value = "$(eval '\'false\' if \'$(var vr)\' == \'true\' else \'true\'')" />
 
 
     <!-- 1. Gazebo, no window. The group keeps these settings away from RViz,
@@ -56,6 +72,14 @@
                 /camera/image_raw@sensor_msgs/msg/Image[ignition.msgs.Image
                 /camera/camera_info@sensor_msgs/msg/CameraInfo[ignition.msgs.CameraInfo" />
 
+    <!-- Gazebo's 3D window on the running simulation (gazebo_view:=true) -->
+    <group if = "$(var gazebo_view)">
+        <set_env name = "LIBGL_ALWAYS_SOFTWARE" value = "1" />
+        <set_env name = "IGN_GAZEBO_RESOURCE_PATH"
+            value = "$(find-pkg-prefix my_robot_description)/share:$(env IGN_GAZEBO_RESOURCE_PATH '')" />
+        <executable cmd = "ign gazebo -g --render-engine ogre2" output = "screen" />
+    </group>
+
     <!-- 4 + 5. SLAM and Nav2, started 5 s later so Gazebo and the robot are ready first -->
     <!-- CREATES THE MAP FRAME, FOR BETTER ODOMETRY-->
     <timer period = "5.0">
@@ -65,13 +89,14 @@
             <param name = "use_sim_time" value = "true" />
         </node>
 
-        <include file = "$(find-pkg-share nav2_bringup)/launch/navigation_launch.py">
+        <!-- our copy of Nav2's navigation launch - it adds the no-spin behaviour tree -->
+        <include file = "$(find-pkg-share my_robot_bringup)/launch/navigation_launch.py">
             <arg name = "use_sim_time" value = "true" />
             <arg name = "params_file" value = "$(var nav2_params_path)" />
         </include>
     </timer>
 
-    <!-- 6. RViz with the walker layout (paths, detection lane, the store drawn as 3D blocks) -->
+    <!-- 6. RViz with the walker layout (paths, tentacles, hazards, the store drawn as 3D blocks) -->
     <node pkg = "rviz2" exec = "rviz2" output = "screen"
         args = "-d $(var rviz_config_path)">
         <param name = "use_sim_time" value = "true" />
@@ -99,16 +124,52 @@
         <param name = "node_names" value = "['collision_monitor']" />
     </node>
 
-    <!-- 8. Walker autonomy - drive forward, watch the path, slow down if the human isn't aware.
+    <!-- 8. Walker autonomy - drive forward (head-guided), the tentacle fan, speed and berth decisions.
             Turn off with autonomy:=false (e.g. to map by hand with teleop). -->
     <group if = "$(var autonomy)">
-        <node pkg = "my_robot_autonomy" exec = "obstacle_detector" output = "screen">
+        <node pkg = "my_robot_autonomy" exec = "tentacles" output = "screen">
             <param name = "use_sim_time" value = "true" />
         </node>
         <node pkg = "my_robot_autonomy" exec = "walker_brain" output = "screen">
+            <param from = "$(var hazards_params_path)" />
+            <param name = "start_enabled" value = "$(var start_enabled)" />
             <param name = "use_sim_time" value = "true" />
         </node>
         <node pkg = "my_robot_autonomy" exec = "forward_goal" output = "screen">
+            <param from = "$(var head_params_path)" />
+            <param name = "start_enabled" value = "$(var start_enabled)" />
+            <param name = "use_sim_time" value = "true" />
+        </node>
+    </group>
+
+    <!-- 9. The VR evaluation (vr:=true): hazard loop, floor trajectory, EEG, headset web server, logging -->
+    <group if = "$(var vr)">
+        <node pkg = "my_robot_autonomy" exec = "hazard_tracker" output = "screen">
+            <param from = "$(var hazards_params_path)" />
+            <param name = "world_file" value = "$(var world_path)" />
+            <param name = "use_sim_time" value = "true" />
+        </node>
+        <node pkg = "my_robot_autonomy" exec = "trajectory_overlay" output = "screen">
+            <param from = "$(var hazards_params_path)" />
+            <param name = "use_sim_time" value = "true" />
+        </node>
+        <node pkg = "my_robot_autonomy" exec = "eeg_decoder" output = "screen">
+            <param from = "$(var eeg_params_path)" />
+            <param name = "use_sim_time" value = "true" />
+        </node>
+        <group if = "$(eval '\'$(var eeg)\' == \'emulator\'')">
+            <node pkg = "my_robot_autonomy" exec = "muse_emulator" output = "screen">
+                <param from = "$(var eeg_params_path)" />
+                <param name = "detect_prob" value = "$(var emulator_detect_prob)" />
+                <param name = "use_sim_time" value = "true" />
+            </node>
+        </group>
+        <node pkg = "walker_vr" exec = "web_server" output = "screen">
+            <param name = "world_file" value = "$(var world_path)" />
+            <param name = "start_enabled" value = "false" />
+            <param name = "use_sim_time" value = "true" />
+        </node>
+        <node pkg = "my_robot_autonomy" exec = "session_logger" output = "screen">
             <param name = "use_sim_time" value = "true" />
         </node>
     </group>

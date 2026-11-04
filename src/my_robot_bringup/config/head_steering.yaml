@@ -1,0 +1,11 @@
+# Head-guided direction - how the user's head steers the walker's forward goal.
+
+forward_goal:
+  ros__parameters:
+    head_filter_time: 1.5        # s - low-pass filter, so brief glances average out
+    head_deadband_deg: 12.0      # looks within this of the travel direction don't steer
+    head_turn_rate_deg: 15.0     # max turn the head can cause, per second
+    hazard_look_exclusion_deg: 10.0  # looks this close to a tagged hazard are the probe, not a choice
+    open_clearance: 2.5          # m clear ahead -> the head has full say
+    near_clearance: 0.8          # m clear ahead -> the machine is fully in charge
+    head_timeout: 1.0            # s without head data -> the machine steers alone

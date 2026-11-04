@@ -9,8 +9,8 @@ This repository is the **VR evaluation build**: the walker, the store and the ha
 the user experiences them in a **Meta Quest 3** in full VR, and a **Muse EEG headband with an Oz electrode** reads
 their visual response. The aim is to evaluate the concept before any hardware is funded.
 
-> **Status: in progress.** This README describes the system as designed. The [Status](#status) table shows which
-> parts already exist and which are still being built.
+> **Status: built and tested in simulation** (with the emulated Muse and a simulated headset). Not yet tried with a
+> real Quest 3 and Muse - see [Status](#status).
 
 > **HAVE A QUEST 3 AND A MUSE? [READ HERE: SETUP AND USE INSTRUCTIONS FOR VR](#read-here-setup-and-use-instructions-for-vr-quest-3-and-muse)**
 
@@ -137,7 +137,7 @@ These hold in every mode, and nothing in the software can switch them off.
 5. **The walker stops if commands stop.** If the planner or any input goes silent, the walker receives a zero
    command rather than carrying on at its last speed.
 6. **No surprise motion.** Any slowing or change of course is shown on the floor display before it happens. The
-   walker does not perform sudden recovery spins.
+   walker never spins on the spot to recover. If it's boxed in, its last resort is to back up 20 cm at 5 cm/s.
 7. **Speed is capped** at a slow walking pace.
 8. **Photosensitivity:** flicker is limited to **6–13 Hz** (avoiding roughly 15–25 Hz), flicker contrast is capped,
    and the operator can stop all flicker instantly. This build assumes participants don't have photosensitive
@@ -165,6 +165,14 @@ the results are read correctly.
   comfort vignette, but some people may still feel it.
 - **What SSVEP measures.** A present response is evidence that the tag reached the user's visual cortex. Whether that
   predicts *noticing* the hazard, especially in peripheral vision, is something the experiments are meant to test.
+- **Only two hazards are probed at once.** A single Oz electrode can only separate a few frequencies, and only
+  frequencies **outside the alpha band (about 8–12 Hz)** work reliably: near alpha the response is buried in the
+  brain's own rhythm. In simulated tests, 7.5 and 12.86 Hz were detected 93–95 % of the time with 0–2 % false alarms,
+  against 28 % at 11.25 Hz. So tags use 7.5, 12.86, 6.92 and 6.43 Hz, at most two at a time. The store can hold any
+  number of obstacles (frequencies are reused once a hazard is registered or passed), but a third hazard on the path
+  waits in the queue, and if it reaches the decision distance before a frequency frees up it is treated as missed
+  (cautious). Phase coding (several hazards on one frequency) was tested and rejected: it needs timing accurate to
+  about 10 ms, which the Muse's Bluetooth link can't guarantee.
 
 ### How the pieces connect
 
@@ -176,7 +184,7 @@ the results are read correctly.
  └──────────────────────────────────┘        │  Gazebo (walker + store) ◄── Nav2 ◄── walker brain    │
                                              │      │ LiDAR                     ▲        ▲           │
  ┌──────────────────────────────────┐  Wi-Fi │      └──► hazard tracker ────────┘        │           │
- │ Quest 3 browser (WebXR app)      │◄──────►│  rosbridge (wss :9090)   head steering ───┘           │
+ │ Quest 3 browser (WebXR app)      │◄──────►│  web bridge (https + wss :8443) head steering ┘       │
  │  draws store, walker, tags,      │        │  web server (https :8443)                            │
  │  floor trajectory; sends head    │        │  RViz (operator view)                                │
  │  pose                            │        └──────────────────────────────────────────────────────┘
@@ -184,7 +192,8 @@ the results are read correctly.
 ```
 
 - The Muse connects by Bluetooth, which **WSL2 can't use**, so it streams from Windows over LSL.
-- The Quest's browser loads the VR app from the PC, and talks to ROS through rosbridge.
+- The Quest's browser loads the VR app from the PC, and talks to ROS through the walker's web bridge, over the same
+  port (8443).
 - Gazebo simulates the walker. The headset only *draws* the scene, rebuilt from the same world file.
 
 ---
@@ -202,10 +211,8 @@ This is the full setup, with the real headset and the real EEG.
 
 ### Part A: one-time setup (about 30 minutes)
 
-**A1. Install the extra ROS packages** (in WSL):
+**A1. Install the EEG library** (in WSL). Nothing else is needed: the web bridge is built in.
 ```bash
-sudo apt update
-sudo apt install ros-humble-rosbridge-suite
 pip install pylsl
 ```
 
@@ -231,7 +238,7 @@ and reopen your Ubuntu terminal.
 
 **A4. Open the firewall ports.** In **PowerShell as Administrator**:
 ```powershell
-New-NetFirewallRule -DisplayName "Walker VR web"       -Direction Inbound -Protocol TCP -LocalPort 8443,9090 -Action Allow
+New-NetFirewallRule -DisplayName "Walker VR web"       -Direction Inbound -Protocol TCP -LocalPort 8443 -Action Allow
 New-NetFirewallRule -DisplayName "Walker LSL (TCP)"    -Direction Inbound -Protocol TCP -LocalPort 16571-16604 -Action Allow
 New-NetFirewallRule -DisplayName "Walker LSL (UDP)"    -Direction Inbound -Protocol UDP -LocalPort 16571-16604 -Action Allow
 Set-NetFirewallHyperVVMSetting -Name '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' -DefaultInboundAction Allow
@@ -239,15 +246,19 @@ Set-NetFirewallHyperVVMSetting -Name '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' -D
 
 **A5. Make the HTTPS certificate.** The Quest only allows VR on secure (https) pages. In WSL:
 ```bash
+cd ~/eye2steering_ws
+source install/setup.bash
 ros2 run walker_vr make_certs
 ```
+It prints the addresses the certificate covers. If your PC's Wi-Fi address (A6) isn't listed, run it again with
+that address, e.g. `ros2 run walker_vr make_certs 192.168.1.42`.
 
 **A6. Find the PC's IP address.** In PowerShell, run `ipconfig` and note the **IPv4 address** of your Wi-Fi
 adapter, for example `192.168.1.42`. You'll type it into the Quest. Below it's written as `<PC-IP>`.
 
-**A7. Let the Quest trust the certificate** (once per certificate). In the Quest browser, open
-`https://<PC-IP>:8443`, choose **Advanced → Proceed** on the warning, then also open `https://<PC-IP>:9090` and do the
-same. (The second page will show an error after you accept. That's expected.)
+**A7. Let the Quest trust the certificate** (once per certificate). Start the system once (B4), then in the Quest
+browser open `https://<PC-IP>:8443` and choose **Advanced → Proceed** on the warning. Do the same once in the PC's
+browser for `https://localhost:8443`.
 
 ### Part B: each session (about 15 minutes)
 
@@ -270,8 +281,8 @@ colcon build
 source install/setup.bash
 ros2 launch my_robot_bringup my_robot_nav.launch.xml vr:=true eeg:=muse
 ```
-This starts the simulated store and walker, the planner, the hazard loop, the EEG decoder, rosbridge, the web server
-and RViz (for the operator). The walker **waits** until the operator starts it.
+This starts the simulated store and walker, the planner, the hazard loop, the EEG decoder, the web bridge and RViz
+(for the operator). Add `gazebo_view:=true` to also open the Gazebo 3D window (B5) automatically. The walker **waits** until the operator starts it.
 
 **B5. Let other people watch, live.** While the participant is in VR, anyone at the PC can watch the walker moving
 and operating **in real time, as the participant experiences it**. Each view joins the running session, and closing
@@ -357,7 +368,7 @@ Every part can be tried with simulated stand-ins.
 
 | You have | Command | What replaces the missing part |
 |---|---|---|
-| Nothing | `ros2 launch my_robot_bringup my_robot_nav.launch.xml vr:=true eeg:=emulator` and open `https://localhost:8443` on the PC | The browser shows the VR scene on the desktop (look around with the mouse). Simulated EEG "sees" tags that are in view. |
+| Nothing | `ros2 launch my_robot_bringup my_robot_nav.launch.xml vr:=true eeg:=emulator` and open `https://localhost:8443` on the PC (`http://` if you haven't made the certificate, A5) | The browser shows the VR scene on the desktop (look around with the mouse). Simulated EEG "sees" tags that are in view. |
 | Quest, no Muse | `... eeg:=emulator` | Simulated EEG, driven by where the headset is actually looking |
 | Muse, no Quest | `... eeg:=muse` and open the scene on a PC monitor | The flicker is drawn on the monitor. For SSVEP testing, use a 60 Hz or higher monitor. |
 
@@ -392,10 +403,12 @@ To watch the session in RViz, in Gazebo 3D, or through the participant's eyes, s
 | Hazards probed at once | 2 | `config/hazards.yaml` | The rest wait in a queue |
 | Careful speed | 40 % | `config/hazards.yaml` | Speed cap for a missed hazard |
 | Extra clearance | +0.35 m | `config/hazards.yaml` | Wider berth for a missed hazard |
-| Flicker frequencies | 6.43–12.86 Hz | `config/hazards.yaml` | Taken from the headset refresh rate (90 Hz) |
+| Flicker frequencies | 7.5, 12.86, 6.92, 6.43 Hz | `config/hazards.yaml` | From the 90 Hz refresh rate, outside the alpha band (see limitations) |
 | Flicker contrast | subtle 0.25, strong 0.5 | `config/hazards.yaml` | Capped for photosensitivity |
 | Head filter / deadband | 1.5 s / ±12° | `config/head_steering.yaml` | How long and how far the user must look to steer |
-| Detection threshold | set by SSVEP check | `config/eeg.yaml` | How strong a response counts as present |
+| Detection threshold | 3.5 (the SSVEP check resets it, never below 3.0) | `config/eeg.yaml` | How strong a response counts as present, for 3 windows in a row |
+| Floor trajectory | 2 s ahead, at least 1.5 m | `config/hazards.yaml` | How far ahead the floor lines reach |
+| Simulated user | notices 80 % of hazards | launch option `emulator_detect_prob:=` | Only with `eeg:=emulator` |
 
 ---
 
@@ -404,7 +417,9 @@ To watch the session in RViz, in Gazebo 3D, or through the participant's eyes, s
 | Problem | Likely cause and fix |
 |---|---|
 | Quest shows "This site can't be reached" | Quest and PC not on the same Wi-Fi, mirrored networking not on (A3), or firewall (A4) |
-| Quest says "Connecting…" forever | The certificate for port 9090 hasn't been accepted (A7) |
+| Quest says "Connecting…" forever | The system isn't running (B4), or the page was opened before it started: reload |
+| PC browser warns about the page | Expected with the self-signed certificate: choose Advanced → Proceed (A7) |
+| Walker doesn't move after Start walking | Nav2 is still starting (about 20 s after launch). The operator page shows the state. |
 | No **Enter VR** button | The page was opened with `http://` instead of `https://` |
 | `eeg_check stream` finds no stream | BlueMuse isn't streaming, or mirrored networking (A3) isn't on |
 | Stream found but no AUX channel | Turn on the AUX channel in the streaming tool's settings |
@@ -428,11 +443,14 @@ src/
 │   ├── walker_brain        per-hazard decisions → speed cap and extra clearance
 │   ├── forward_goal        the walker's forward goal, biased by head direction
 │   ├── trajectory_overlay  the 2 s floor display (centre and edge lines, authority)
-│   ├── eeg_decoder         Muse/LSL → SSVEP present / absent per hazard
+│   ├── eeg_decoder         Muse/LSL → SSVEP present / absent per hazard; the SSVEP check
 │   ├── muse_emulator       simulated EEG for testing without a Muse
-│   └── eeg_check           EEG setup checks
-├── walker_interfaces/      ROS messages: hazards, probe results, trajectory
-└── walker_vr/              the WebXR app (headset + operator page), web server, certificates
+│   ├── eeg_check           EEG setup checks
+│   ├── session_logger      records each session to sessions/
+│   └── world_markers       the store drawn in RViz
+├── walker_interfaces/      ROS messages: hazards, probe results, trajectory, tentacles
+└── walker_vr/              the web bridge (HTTPS + WebSocket), certificates, and the pages:
+    └── web/                index.html (headset), spectator.html, operator.html
 ```
 
 ---
@@ -443,19 +461,24 @@ src/
 |---|---|
 | Simulated walker: LiDAR, IMU, camera, EKF, Gazebo store world | ✅ done |
 | Live SLAM, Nav2 with the walker's footprint, collision monitor, twist_mux | ✅ done |
-| Forward driving with smooth turns; obstacle lane; two-speed logic | ✅ done (to be replaced by the parts below) |
-| RViz operator view | ✅ done |
-| Stop when commands stop; no recovery spins | ⏳ to build |
-| Hazard tracking, relevance, probe queue, frequencies | ⏳ to build |
-| Tentacle fan | ⏳ to build |
-| Per-hazard walker brain (speed cap + wider berth) | ⏳ to build |
-| Head-guided direction with risk-based authority | ⏳ to build |
-| Floor trajectory display | ⏳ to build |
-| EEG decoder, Muse emulator, EEG checks | ⏳ to build |
-| WebXR headset app and operator page | ⏳ to build |
-| Headset mirror page (`spectator.html`) | ⏳ to build |
-| Gazebo 3D view of the running simulation (`ign gazebo -g`) | ✅ works now |
-| VR option on `my_robot_nav.launch.xml` (`vr:=true eeg:=muse/emulator`), session logging | ⏳ to build |
+| Stop when commands stop; no recovery spins (gentle 20 cm back-up as last resort) | ✅ done |
+| Hazard tracking, relevance, probe queue, frequencies | ✅ done, tested in sim |
+| Tentacle fan | ✅ done, tested in sim |
+| Per-hazard walker brain (speed cap + wider berth) | ✅ done, tested in sim |
+| Head-guided direction with risk-based authority | ✅ done, tested in sim with a simulated head |
+| Floor trajectory display | ✅ done, tested in sim |
+| EEG decoder, SSVEP check, Muse emulator, EEG checks | ✅ done, tested with the emulator |
+| Web bridge, headset app, spectator and operator pages | ✅ done, tested with a simulated headset |
+| VR option on `my_robot_nav.launch.xml` (`vr:=true eeg:=muse/emulator gazebo_view:=true`), session logging | ✅ done |
+| **With a real Quest 3** (WebXR, 90 Hz flicker, recentre, comfort) | ⏳ not tried yet |
+| **With a real Muse + Oz** (BlueMuse/muselsl over LSL from Windows, real SSVEP) | ⏳ not tried yet |
+
+**Known limitations, from testing in simulation:**
+- In very tight spots (a narrow gap next to clutter) the walker can hesitate for up to about 20 s before it finds a
+  way out.
+- Which objects count as hazards comes from the world file's names, standing in for an object classifier.
+- The emulated EEG is a simplified model (3 µV SSVEP in background noise). Real responses vary from person to person,
+  which is why the SSVEP check sets the threshold per participant.
 
 **Future extension, manual mode.** The user pushes the walker like a conventional one, and the robot steps in only
 when an obstacle is in the path, by braking one wheel more than the other, so the user's own push carries the walker

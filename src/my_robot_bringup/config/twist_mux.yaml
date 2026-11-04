@@ -1,6 +1,12 @@
 twist_mux:
   ros__parameters:
     topics:
+      # zeros from walker_brain, always on - if everything above goes silent, the walker gets 0
+      # instead of carrying on at its last speed
+      idle:
+        topic: cmd_vel_idle
+        timeout: 0.5
+        priority: 1
       navigation:
         topic: cmd_vel
         timeout: 0.5
@@ -9,3 +15,8 @@ twist_mux:
         topic: cmd_vel_joy
         timeout: 0.5
         priority: 100
+      # zeros from walker_brain while the grip is released (Stop walking) - beats everything
+      stop:
+        topic: cmd_vel_stop
+        timeout: 0.5
+        priority: 200

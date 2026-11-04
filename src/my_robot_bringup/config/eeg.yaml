@@ -1,0 +1,23 @@
+# The SSVEP decoder and the Muse emulator.
+
+eeg_decoder:
+  ros__parameters:
+    stream_type: "EEG"           # LSL stream type (BlueMuse and muselsl both use EEG)
+    stream_name: ""              # "" = the first EEG stream found
+    oz_channel: 4                # fallback if the stream has no channel labels (Muse: TP9 AF7 AF8 TP10 AUX)
+    window: 2.0                  # s of EEG per analysis
+    step: 0.5                    # s between analyses
+    threshold: 3.5               # score that counts as a response (the SSVEP check resets it per person)
+    ref_ratio: 1.5               # ...and it must beat frequencies not being shown by this much
+    windows_required: 3          # windows in a row before "present"
+    line_frequency: 60.0         # mains hum to notch out (50 in Europe)
+    # reference set - frequencies NOT being shown are compared against the tagged ones (more is better here)
+    frequencies: [7.5, 11.25, 8.18, 12.86, 6.92, 9.0, 6.43, 10.0]
+    check_frequencies: [7.5, 12.86]   # the pair two simultaneous tags use
+
+muse_emulator:
+  ros__parameters:
+    detect_prob: 0.8             # chance the simulated user notices a hazard in view
+    ssvep_amplitude_uv: 3.0          # typical SSVEP at Oz is 1-5 uV
+    noise_uv: 8.0
+    view_half_angle_deg: 50.0

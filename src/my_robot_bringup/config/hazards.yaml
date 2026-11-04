@@ -1,0 +1,34 @@
+# The hazard loop - which obstacles get probed, when, and how the walker responds.
+
+hazard_tracker:
+  ros__parameters:
+    # Objects whose names start with these are hazards (the store's clutter);
+    # everything else in the world (walls, shelves, checkouts, tables) is structure.
+    hazard_name_prefixes: ["aisle", "back_aisle", "main_aisle"]
+    probe_start_distance: 4.0   # m ahead (from the walker's front) when probing starts
+    decision_distance: 2.5      # m ahead - escalate here if the hazard still isn't registered
+    near_path_margin: 0.6       # m - an obstacle this close to the path counts as "on or near" it
+    max_simultaneous: 2         # hazards probed at once; the rest wait in a queue
+    # Flicker frequencies (Hz), most preferred first (90 Hz headset: 90/12, 90/7, 90/13, 90/14).
+    # Only frequencies OUTSIDE the alpha band (~8-12 Hz): near alpha the response is buried in the
+    # brain's own rhythm (tested: 28 % detected at 11.25 Hz vs 93-95 % at 7.5 / 12.86 Hz). Also within
+    # 6-13 Hz for photosensitivity. Two simultaneous tags get 7.5 + 12.86 Hz.
+    frequencies: [7.5, 12.86, 6.92, 6.43]
+    subtle_contrast: 0.25       # the normal tag
+    strong_contrast: 0.5        # the stronger cue for a missed hazard (the cap)
+    min_hits: 3                 # lidar points on an object before it counts as detected
+
+walker_brain:
+  ros__parameters:
+    careful_percent: 40.0       # speed cap while a missed hazard is ahead
+    extra_clearance: 0.35       # m added to the berth around obstacles while a missed hazard is ahead
+    normal_inflation_radius: 0.55
+    normal_cost_scaling: 3.0
+    wide_cost_scaling: 1.5
+
+trajectory_overlay:
+  ros__parameters:
+    horizon: 2.0                # s of travel shown on the floor
+    min_length: 1.5             # m - so the lines stay visible at walking pace
+    max_speed: 0.26             # m/s, the walker's normal pace (Nav2 max_vel_x)
+    half_width: 0.25            # m, half the walker's width
