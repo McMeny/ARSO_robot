@@ -271,19 +271,29 @@ source install/setup.bash
 ros2 launch my_robot_bringup my_robot_nav.launch.xml vr:=true eeg:=muse
 ```
 This starts the simulated store and walker, the planner, the hazard loop, the EEG decoder, rosbridge, the web server
-and RViz. The walker **waits** until the operator starts it.
+and RViz (for the operator). The walker **waits** until the operator starts it.
 
-**B5. Open the 3D view, so other people can watch.** Open a second WSL terminal (**Terminal 2**) and paste:
+**B5. Let other people watch, live.** While the participant is in VR, anyone at the PC can watch the walker moving
+and operating **in real time, as the participant experiences it**. Each view joins the running session, and closing
+one doesn't affect anything.
+
+**Watch in RViz**: the robot moving and thinking: the map, its planned path, the tentacle fan, the hazards and
+their probe states, the speed state and the floor trajectory. Open a new WSL terminal and paste:
+```bash
+source ~/eye2steering_ws/install/setup.bash
+ros2 run rviz2 rviz2 -d ~/eye2steering_ws/install/my_robot_bringup/share/my_robot_bringup/rviz/walker.rviz --ros-args -p use_sim_time:=true
+```
+
+**Watch in Gazebo 3D**: the store and the walker moving through it, from any angle (drag to orbit). Open a new WSL
+terminal and paste:
 ```bash
 export IGN_GAZEBO_RESOURCE_PATH=$HOME/eye2steering_ws/install/my_robot_description/share
 LIBGL_ALWAYS_SOFTWARE=1 ign gazebo -g --render-engine ogre2
 ```
-This opens Gazebo's 3D window on the simulation that's already running: the store and the walker moving through it,
-from any angle (drag to orbit). Closing it doesn't affect the session.
 
-Gazebo only shows the physical world, so the flickering tags and floor lines aren't drawn there. To see **exactly
-what the participant sees**, also open `https://localhost:8443/spectator.html` in a PC browser (the headset mirror),
-or cast the Quest (**Camera → Cast**).
+**Watch through the participant's eyes**: the exact headset view, with the flickering tags and floor lines (which
+RViz and Gazebo don't draw). Open `https://localhost:8443/spectator.html` in a PC browser, or cast the Quest
+(**Camera → Cast**).
 
 **B6. Open the operator page** on the PC: `https://localhost:8443/operator.html`. It shows the EEG signal quality,
 each hazard's state, and the controls in [Operator controls](#operator-controls).
@@ -369,8 +379,7 @@ On `https://localhost:8443/operator.html`:
 | **EEG status** | Live signal quality: OK, poor contact, or no stream |
 | **Hazard list** | Each hazard: frequency, state (waiting, probing, registered, missed) and confidence |
 
-RViz on the PC shows the operator's view: the store, the SLAM map, the planned path, the tentacle fan, the hazards
-and their states, and the floor trajectory.
+To watch the session in RViz, in Gazebo 3D, or through the participant's eyes, see B5.
 
 ---
 
