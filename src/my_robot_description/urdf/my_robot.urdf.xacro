@@ -1,0 +1,150 @@
+<?xml version="1.0"?>
+<robot name="my_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:include filename="robot.urdf" />
+    <!-- not used with Gazebo - the DiffDrive plugin below drives the wheels instead -->
+    <!-- <xacro:include filename="mobile_base.ros2_control.xacro" /> -->
+
+    <!-- on the ground, directly under the midpoint of the two wheels -->
+    <link name="base_footprint" />
+    <joint name="base_footprint_joint" type="fixed">
+        <parent link="base_footprint" />
+        <child link="part4__cut_extrude1" />
+        <origin xyz="0.197626 -0.008167 0.141708" rpy="0 0 0" />
+    </joint>
+
+    <!-- LIDAR SENSOR FRAME - centre of the lidar body (part6__boss_extrude1) -->
+   <link name = "laser_frame"/>
+   <joint name = "laser_joint" type = "fixed">
+    <parent link = "part4__cut_extrude1"/>
+    <child link = "laser_frame"/>
+    <origin xyz = "0.24183 0.00817 0.00829" rpy = "0 0 0" />
+   </joint>
+
+   <!-- Ignition fortress sensor plugin-->
+<gazebo reference = "laser_frame">
+   <sensor name = "gpu_lidar" type = "gpu_lidar">
+    <ignition_frame_id>laser_frame</ignition_frame_id>
+    <update_rate>10</update_rate>
+    <topic>scan</topic>
+    <lidar>
+        <scan>
+            <horizontal>
+                <samples>360</samples>
+                <resolution>1</resolution>
+                <min_angle>-3.14159</min_angle>
+                <max_angle>3.14159</max_angle>
+            </horizontal>
+        </scan>
+        <range>
+            <min>0.15</min>
+            <max>12.0</max>
+        </range>
+    </lidar>
+    <always_on>1</always_on>
+    <visualize>true</visualize>
+   </sensor>
+</gazebo>
+
+<!-- Ignition fortress differential drive plugin-->
+<gazebo>
+    <plugin filename = "ignition-gazebo-diff-drive-system" name = "ignition::gazebo::systems::DiffDrive">
+        <left_joint>left_wheel</left_joint>
+        <right_joint>right_wheel</right_joint>
+        <wheel_separation>0.39</wheel_separation>
+        <wheel_radius>0.05</wheel_radius>
+        <odom_publish_frequency>30</odom_publish_frequency>
+        <topic>cmd_vel_out</topic>
+        <odom_topic>odom</odom_topic>
+        <tf_topic>diff_drive_tf</tf_topic>
+        <frame_id>odom</frame_id>
+        <child_frame_id>base_footprint</child_frame_id>
+    </plugin>
+</gazebo>
+
+<!-- Ignition fortress joint state publisher - wheel + caster angles for robot_state_publisher -->
+<gazebo>
+    <plugin filename = "ignition-gazebo-joint-state-publisher-system" name = "ignition::gazebo::systems::JointStatePublisher">
+        <topic>joint_states</topic>
+    </plugin>
+</gazebo>
+
+<!-- Wheel grip - casters slide easily, drive wheels grip -->
+<gazebo reference="part1__cut_extrude1_3"><mu1>0.01</mu1><mu2>0.01</mu2></gazebo>
+<gazebo reference="part1__cut_extrude1_4"><mu1>0.01</mu1><mu2>0.01</mu2></gazebo>
+<gazebo reference="part1__cut_extrude1"><mu1>1.0</mu1><mu2>1.0</mu2></gazebo>
+<gazebo reference="part1__cut_extrude1_2"><mu1>1.0</mu1><mu2>1.0</mu2></gazebo>
+
+
+    <!-- IMU FRAME - on the chassis, directly above the middle of the wheel axle -->
+    <link name = "imu_link"/>
+    <joint name = "imu_joint" type = "fixed">
+        <parent link = "part4__cut_extrude1"/>
+        <child link = "imu_link"/>
+        <origin xyz = "-0.197626 0.008167 0.0" rpy = "0 0 0" />
+    </joint>
+
+    <!-- Ignition fortress IMU sensor -->
+    <gazebo reference = "imu_link">
+        <sensor name = "imu_sensor" type = "imu">
+            <ignition_frame_id>imu_link</ignition_frame_id>
+            <always_on>1</always_on>
+            <update_rate>100</update_rate>
+            <topic>imu</topic>
+            <imu>
+                <!-- small noise, like a real gyro; the EKF expects some -->
+                <angular_velocity>
+                    <x><noise type = "gaussian"><mean>0.0</mean><stddev>0.0002</stddev></noise></x>
+                    <y><noise type = "gaussian"><mean>0.0</mean><stddev>0.0002</stddev></noise></y>
+                    <z><noise type = "gaussian"><mean>0.0</mean><stddev>0.0002</stddev></noise></z>
+                </angular_velocity>
+                <linear_acceleration>
+                    <x><noise type = "gaussian"><mean>0.0</mean><stddev>0.017</stddev></noise></x>
+                    <y><noise type = "gaussian"><mean>0.0</mean><stddev>0.017</stddev></noise></y>
+                    <z><noise type = "gaussian"><mean>0.0</mean><stddev>0.017</stddev></noise></z>
+                </linear_acceleration>
+            </imu>
+        </sensor>
+    </gazebo>
+
+        <!-- CAMERA FRAME - front of the chassis, looking forward -->
+    <link name = "camera_link"/>
+    <joint name = "camera_joint" type = "fixed">
+        <parent link = "part4__cut_extrude1"/>
+        <child link = "camera_link"/>
+        <origin xyz = "0.30 0.00817 0.05" rpy = "0 0 0" />
+    </joint>
+
+    <!-- cameras use a different axis convention (z forward, x right, y down) -->
+    <link name = "camera_link_optical"/>
+    <joint name = "camera_optical_joint" type = "fixed">
+        <parent link = "camera_link"/>
+        <child link = "camera_link_optical"/>
+        <origin xyz = "0 0 0" rpy = "-1.5708 0 -1.5708" />
+    </joint>
+
+    <!-- Ignition fortress camera sensor -->
+    <gazebo reference = "camera_link">
+        <sensor name = "camera" type = "camera">
+            <ignition_frame_id>camera_link_optical</ignition_frame_id>
+            <always_on>1</always_on>
+            <update_rate>10</update_rate>
+            <visualize>true</visualize>
+            <topic>camera/image_raw</topic>
+            <camera>
+                <horizontal_fov>1.089</horizontal_fov>
+                <image>
+                    <width>640</width>
+                    <height>480</height>
+                    <format>R8G8B8</format>
+                </image>
+                <clip>
+                    <near>0.05</near>
+                    <far>8.0</far>
+                </clip>
+            </camera>
+        </sensor>
+    </gazebo>
+
+
+</robot>

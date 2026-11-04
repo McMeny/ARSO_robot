@@ -1,0 +1,84 @@
+<launch>
+    <let name = "urdf_path"
+        value = "$(find-pkg-share my_robot_description)/urdf/my_robot.urdf.xacro" />
+    <let name = "world_path"
+        value = "$(find-pkg-share my_robot_bringup)/worlds/my_world.sdf" />
+    <let name = "nav2_params_path"
+        value = "$(find-pkg-share my_robot_bringup)/config/nav2_params.yaml" />
+    <let name = "slam_params_path"
+        value = "/opt/ros/humble/share/slam_toolbox/config/mapper_params_online_async.yaml" />
+    <let name = "rviz_config_path"
+        value = "/opt/ros/humble/share/nav2_bringup/rviz/nav2_default_view.rviz" />
+    <let name = "ekf_params_path"
+        value = "$(find-pkg-share my_robot_bringup)/config/ekf.yaml" />
+
+
+    <!-- 1. Gazebo, no window. The group keeps these settings away from RViz,
+            so RViz can still use the GPU. -->
+    <group>
+        <set_env name = "LIBGL_ALWAYS_SOFTWARE" value = "1" />
+        <set_env name = "IGN_GAZEBO_RESOURCE_PATH"
+            value = "$(find-pkg-prefix my_robot_description)/share:$(env IGN_GAZEBO_RESOURCE_PATH '')" />
+        <include file = "$(find-pkg-share ros_gz_sim)/launch/gz_sim.launch.py">
+            <arg name = "gz_args" value = "-s -r $(var world_path)" />
+        </include>
+    </group>
+
+    <!-- 2. robot_state_publisher -->
+    <node pkg = "robot_state_publisher" exec = "robot_state_publisher">
+        <param name = "robot_description"
+            value = "$(command 'xacro $(var urdf_path)')" />
+        <param name = "use_sim_time" value = "true" />
+    </node>
+
+    
+    <!-- EKF - combines wheel odometry and IMU into odom -> base_footprint -->
+    <node pkg = "robot_localization" exec = "ekf_node" name = "ekf_filter_node" output = "screen">
+        <param from = "$(var ekf_params_path)" />
+        <param name = "use_sim_time" value = "true" />
+    </node>
+
+
+    <!-- 3. Spawn the robot, and bridge topics between Gazebo and ROS -->
+    <node pkg = "ros_gz_sim" exec = "create" output = "screen"
+        args = "-topic robot_description -name my_robot -z 0.02" />
+
+    <node pkg = "ros_gz_bridge" exec = "parameter_bridge" output = "screen"
+        args = "/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock
+                /cmd_vel_out@geometry_msgs/msg/Twist]ignition.msgs.Twist
+                /odom@nav_msgs/msg/Odometry[ignition.msgs.Odometry
+                /scan@sensor_msgs/msg/LaserScan[ignition.msgs.LaserScan
+                /tf@tf2_msgs/msg/TFMessage[ignition.msgs.Pose_V
+                /joint_states@sensor_msgs/msg/JointState[ignition.msgs.Model
+                /imu@sensor_msgs/msg/Imu[ignition.msgs.IMU
+                /camera/image_raw@sensor_msgs/msg/Image[ignition.msgs.Image
+                /camera/camera_info@sensor_msgs/msg/CameraInfo[ignition.msgs.CameraInfo" />
+
+    <!-- 4 + 5. SLAM and Nav2, started 5 s later so Gazebo and the robot are ready first -->
+    <!-- CREATES THE MAP FRAME, FOR BETTER ODOMETRY-->
+    <timer period = "5.0">
+        
+        <node pkg = "slam_toolbox" exec = "async_slam_toolbox_node" output = "screen">
+            <param from = "$(var slam_params_path)" />
+            <param name = "use_sim_time" value = "true" />
+        </node>
+
+        <include file = "$(find-pkg-share nav2_bringup)/launch/navigation_launch.py">
+            <arg name = "use_sim_time" value = "true" />
+            <arg name = "params_file" value = "$(var nav2_params_path)" />
+        </include>
+    </timer>
+
+    <!-- 6. RViz with the Nav2 layout -->
+    <node pkg = "rviz2" exec = "rviz2" output = "screen"
+        args = "-d $(var rviz_config_path)">
+        <param name = "use_sim_time" value = "true" />
+    </node>
+
+        <!-- twist_mux - picks one driver (Nav2 or teleop) and sends it to the robot on cmd_vel_out -->
+    <node pkg = "twist_mux" exec = "twist_mux" output = "screen">
+        <param from = "$(find-pkg-share my_robot_bringup)/config/twist_mux.yaml" />
+        <param name = "use_sim_time" value = "true" />
+    </node>
+
+</launch>

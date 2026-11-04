@@ -1,0 +1,39 @@
+<?xml version = "1.0"?>
+<robot name = "my_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <ros2_control name = "MobileBaseHardwareInterface" type = "system">
+        <hardware>
+            <plugin>mock_components/GenericSystem</plugin>
+            <param name = "calculate_dynamics">true</param>
+        </hardware>
+
+        <joint name = "right_wheel"> 
+            <command_interface name = "velocity" />
+            <state_interface name = "position" />
+            <state_interface name = "velocity" />
+        </joint>
+
+        <joint name = "left_wheel"> 
+            <command_interface name = "velocity" />
+            <state_interface name = "position" />
+            <state_interface name = "velocity" />
+        </joint>
+
+        <joint name="caster_left_swivel_continuous">
+            <state_interface name="position" />
+        </joint>
+
+        <joint name="caster_left_wheel">
+            <state_interface name="position" />
+        </joint>
+
+        <joint name="caster_right_swivel_continuous">
+            <state_interface name="position" />
+        </joint>
+
+        <joint name="caster_right_wheel">
+            <state_interface name="position" />
+        </joint>
+
+    </ros2_control>
+</robot>

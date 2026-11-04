@@ -1,0 +1,371 @@
+<?xml version="1.0"?>
+<!--
+  20 x 14 m shopping store for SLAM and Nav2 (generated layout).
+  Floor x -10..10, y -7..7. The robot spawns at (0, 0) facing +x, in the main aisle.
+  North half - six shelf units with 2 m aisles, wall shelving, a back aisle.
+  South half - checkout counters and produce tables.
+  Clutter (pallet, carts, boxes, sign, bucket) in some aisles - every gap is at least 1.15 m.
+  Everything is at least 0.4 m tall, above the lidar's ~0.15 m scan height.
+-->
+<sdf version="1.8">
+  <world name="my_world">
+
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="ignition-gazebo-physics-system" name="ignition::gazebo::systems::Physics" />
+    <plugin filename="ignition-gazebo-user-commands-system" name="ignition::gazebo::systems::UserCommands" />
+    <plugin filename="ignition-gazebo-scene-broadcaster-system" name="ignition::gazebo::systems::SceneBroadcaster" />
+    <!-- Needed for the gpu_lidar and camera in the URDF -->
+    <plugin filename="ignition-gazebo-sensors-system" name="ignition::gazebo::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <!-- Needed for the IMU in the URDF -->
+    <plugin filename="ignition-gazebo-imu-system" name="ignition::gazebo::systems::Imu" />
+
+    <light type="directional" name="sun">
+      <cast_shadows>false</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>30 30</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>30 30</size></plane></geometry>
+          <material><ambient>0.8 0.8 0.8 1</ambient><diffuse>0.8 0.8 0.8 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ===== Outer walls (20 x 14 m) ===== -->
+    <model name="wall_north">
+      <static>true</static>
+      <pose>0.000 7.075 0.500 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>20.300 0.150 1.000</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>20.300 0.150 1.000</size></box></geometry>
+          <material><ambient>0.85 0.85 0.8 1</ambient><diffuse>0.85 0.85 0.8 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_south">
+      <static>true</static>
+      <pose>0.000 -7.075 0.500 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>20.300 0.150 1.000</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>20.300 0.150 1.000</size></box></geometry>
+          <material><ambient>0.85 0.85 0.8 1</ambient><diffuse>0.85 0.85 0.8 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_east">
+      <static>true</static>
+      <pose>10.075 0.000 0.500 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.150 14.000 1.000</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.150 14.000 1.000</size></box></geometry>
+          <material><ambient>0.85 0.85 0.8 1</ambient><diffuse>0.85 0.85 0.8 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_west">
+      <static>true</static>
+      <pose>-10.075 0.000 0.500 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.150 14.000 1.000</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.150 14.000 1.000</size></box></geometry>
+          <material><ambient>0.85 0.85 0.8 1</ambient><diffuse>0.85 0.85 0.8 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <!-- ===== Wall shelving - west, east and north walls ===== -->
+    <model name="wall_shelf_west">
+      <static>true</static>
+      <pose>-9.800 3.250 0.800 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.400 7.500 1.600</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.400 7.500 1.600</size></box></geometry>
+          <material><ambient>0.6 0.45 0.3 1</ambient><diffuse>0.6 0.45 0.3 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_shelf_east">
+      <static>true</static>
+      <pose>9.800 3.250 0.800 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.400 7.500 1.600</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.400 7.500 1.600</size></box></geometry>
+          <material><ambient>0.6 0.45 0.3 1</ambient><diffuse>0.6 0.45 0.3 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_shelf_north">
+      <static>true</static>
+      <pose>0.000 6.800 0.800 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>19.200 0.400 1.600</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>19.200 0.400 1.600</size></box></geometry>
+          <material><ambient>0.6 0.45 0.3 1</ambient><diffuse>0.6 0.45 0.3 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <!-- ===== Shelf units - y 1.5..5.0, aisles 2 m wide, back aisle y 5.0..6.6 ===== -->
+    <model name="shelf_1">
+      <static>true</static>
+      <pose>-7.500 3.250 0.800 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.000 3.500 1.600</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1.000 3.500 1.600</size></box></geometry>
+          <material><ambient>0.75 0.55 0.35 1</ambient><diffuse>0.75 0.55 0.35 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="shelf_2">
+      <static>true</static>
+      <pose>-4.500 3.250 0.800 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.000 3.500 1.600</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1.000 3.500 1.600</size></box></geometry>
+          <material><ambient>0.75 0.55 0.35 1</ambient><diffuse>0.75 0.55 0.35 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="shelf_3">
+      <static>true</static>
+      <pose>-1.500 3.250 0.800 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.000 3.500 1.600</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1.000 3.500 1.600</size></box></geometry>
+          <material><ambient>0.75 0.55 0.35 1</ambient><diffuse>0.75 0.55 0.35 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="shelf_4">
+      <static>true</static>
+      <pose>1.500 3.250 0.800 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.000 3.500 1.600</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1.000 3.500 1.600</size></box></geometry>
+          <material><ambient>0.75 0.55 0.35 1</ambient><diffuse>0.75 0.55 0.35 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="shelf_5">
+      <static>true</static>
+      <pose>4.500 3.250 0.800 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.000 3.500 1.600</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1.000 3.500 1.600</size></box></geometry>
+          <material><ambient>0.75 0.55 0.35 1</ambient><diffuse>0.75 0.55 0.35 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="shelf_6">
+      <static>true</static>
+      <pose>7.500 3.250 0.800 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.000 3.500 1.600</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1.000 3.500 1.600</size></box></geometry>
+          <material><ambient>0.75 0.55 0.35 1</ambient><diffuse>0.75 0.55 0.35 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <!-- ===== Checkout counters - lanes 1.7 m wide ===== -->
+    <model name="checkout_1">
+      <static>true</static>
+      <pose>2.000 -3.500 0.450 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.800 2.000 0.900</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.800 2.000 0.900</size></box></geometry>
+          <material><ambient>0.3 0.3 0.35 1</ambient><diffuse>0.3 0.3 0.35 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="checkout_2">
+      <static>true</static>
+      <pose>4.500 -3.500 0.450 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.800 2.000 0.900</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.800 2.000 0.900</size></box></geometry>
+          <material><ambient>0.3 0.3 0.35 1</ambient><diffuse>0.3 0.3 0.35 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="checkout_3">
+      <static>true</static>
+      <pose>7.000 -3.500 0.450 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.800 2.000 0.900</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.800 2.000 0.900</size></box></geometry>
+          <material><ambient>0.3 0.3 0.35 1</ambient><diffuse>0.3 0.3 0.35 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <!-- ===== Produce tables near the entrance ===== -->
+    <model name="produce_table_1">
+      <static>true</static>
+      <pose>-6.000 -4.000 0.400 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>2.000 1.200 0.800</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>2.000 1.200 0.800</size></box></geometry>
+          <material><ambient>0.35 0.6 0.3 1</ambient><diffuse>0.35 0.6 0.3 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="produce_table_2">
+      <static>true</static>
+      <pose>-2.500 -4.500 0.400 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.600 1.000 0.800</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1.600 1.000 0.800</size></box></geometry>
+          <material><ambient>0.35 0.6 0.3 1</ambient><diffuse>0.35 0.6 0.3 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <!-- ===== Aisle x = -6 - clear ===== -->
+    <!-- ===== Aisle x = -3 - pallet against the left shelf (1.2 m gap) ===== -->
+    <model name="aisle2_pallet">
+      <static>true</static>
+      <pose>-3.600 3.000 0.250 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.800 0.800 0.500</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.800 0.800 0.500</size></box></geometry>
+          <material><ambient>0.8 0.6 0.3 1</ambient><diffuse>0.8 0.6 0.3 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <!-- ===== Aisle x = 0 - cart then a fallen box on the other side (slalom, 1.25 m gaps) ===== -->
+    <model name="aisle3_cart">
+      <static>true</static>
+      <pose>0.550 2.500 0.450 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.600 1.000 0.900</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.600 1.000 0.900</size></box></geometry>
+          <material><ambient>0.6 0.6 0.65 1</ambient><diffuse>0.6 0.6 0.65 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="aisle3_fallen_box">
+      <static>true</static>
+      <pose>-0.600 4.200 0.200 0 0 0.500</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.600 0.500 0.400</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.600 0.500 0.400</size></box></geometry>
+          <material><ambient>0.8 0.6 0.3 1</ambient><diffuse>0.8 0.6 0.3 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <!-- ===== Aisle x = 3 - wet floor sign off-centre (1.45 m gap) ===== -->
+    <model name="aisle4_wet_floor_sign">
+      <static>true</static>
+      <pose>3.600 3.500 0.300 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><cylinder><radius>0.15</radius><length>0.6</length></cylinder></geometry></collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.15</radius><length>0.6</length></cylinder></geometry>
+          <material><ambient>1.0 0.85 0.1 1</ambient><diffuse>1.0 0.85 0.1 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <!-- ===== Aisle x = 6 - stacked boxes on both sides (1.2 and 1.3 m gaps) ===== -->
+    <model name="aisle5_boxes_a">
+      <static>true</static>
+      <pose>6.600 2.200 0.350 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.800 0.900 0.700</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.800 0.900 0.700</size></box></geometry>
+          <material><ambient>0.8 0.6 0.3 1</ambient><diffuse>0.8 0.6 0.3 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="aisle5_boxes_b">
+      <static>true</static>
+      <pose>5.350 4.100 0.250 0 0 0.300</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.700 0.700 0.500</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.700 0.700 0.500</size></box></geometry>
+          <material><ambient>0.8 0.6 0.3 1</ambient><diffuse>0.8 0.6 0.3 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <!-- ===== Back aisle - mop bucket (1.15 m gap) ===== -->
+    <model name="back_aisle_mop_bucket">
+      <static>true</static>
+      <pose>-1.500 5.250 0.250 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><cylinder><radius>0.2</radius><length>0.5</length></cylinder></geometry></collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.2</radius><length>0.5</length></cylinder></geometry>
+          <material><ambient>1.0 0.85 0.1 1</ambient><diffuse>1.0 0.85 0.1 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <!-- ===== Main aisle - robot spawns at (0, 0); nothing within 1.5 m of it ===== -->
+    <model name="main_aisle_display">
+      <static>true</static>
+      <pose>-5.000 0.000 0.600 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><cylinder><radius>0.4</radius><length>1.2</length></cylinder></geometry></collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.4</radius><length>1.2</length></cylinder></geometry>
+          <material><ambient>0.8 0.2 0.2 1</ambient><diffuse>0.8 0.2 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="main_aisle_endcap">
+      <static>true</static>
+      <pose>5.000 -0.800 0.500 0 0 0.000</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.000 0.600 1.000</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1.000 0.600 1.000</size></box></geometry>
+          <material><ambient>0.8 0.2 0.2 1</ambient><diffuse>0.8 0.2 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="main_aisle_stray_cart">
+      <static>true</static>
+      <pose>-8.000 -1.000 0.450 0 0 1.200</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.600 1.000 0.900</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.600 1.000 0.900</size></box></geometry>
+          <material><ambient>0.6 0.6 0.65 1</ambient><diffuse>0.6 0.6 0.65 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>

@@ -1,0 +1,340 @@
+<?xml version="1.0" ?>
+<!-- Generated using onshape-to-robot -->
+<!-- Onshape https://cad.onshape.com/documents/e7eaa5f69740a46df86640b5/w/4beb8b55b0f9d7a3251ff0fb/e/df4ddac1db6dbfc8b2ea36b0 -->
+<robot name="walker">
+  <!-- Link part4__cut_extrude1 -->
+  <link name="part4__cut_extrude1">
+    <inertial>
+      <origin xyz="0.00737596 0.00816701 -0.00747482" rpy="0 0 0"/>
+      <mass value="7.16145"/>
+      <inertia ixx="0.158992" ixy="0" ixz="-0.00462613" iyy="0.161486" iyz="0" izz="0.316607"/>
+    </inertial>
+    <!-- Part part2__boss_extrude1 -->
+    <visual>
+      <origin xyz="-0.197626 -0.236833 -0.0917082" rpy="-3.14159 -0 -3.14159"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part2__boss_extrude1.stl"/>
+      </geometry>
+      <material name="part2__boss_extrude1_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.197626 -0.236833 -0.0917082" rpy="-3.14159 -0 -3.14159"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part2__boss_extrude1.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part part4__cut_extrude1 -->
+    <visual>
+      <origin xyz="0.263231 0.258167 -0.00920823" rpy="1.5708 -0 3.14159"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part4__cut_extrude1.stl"/>
+      </geometry>
+      <material name="part4__cut_extrude1_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.263231 0.258167 -0.00920823" rpy="1.5708 -0 3.14159"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part4__cut_extrude1.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part part5__boss_extrude1 -->
+    <visual>
+      <origin xyz="0.243654 -0.186833 -0.0392082" rpy="1.5708 -0 3.14159"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part5__boss_extrude1.stl"/>
+      </geometry>
+      <material name="part5__boss_extrude1_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.243654 -0.186833 -0.0392082" rpy="1.5708 -0 3.14159"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part5__boss_extrude1.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part part6__boss_extrude1 -->
+    <visual>
+      <origin xyz="0.241831 0.00816701 0.000791767" rpy="1.5708 -0 3.14159"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part6__boss_extrude1.stl"/>
+      </geometry>
+      <material name="part6__boss_extrude1_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.241831 0.00816701 0.000791767" rpy="1.5708 -0 3.14159"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part6__boss_extrude1.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part part2__boss_extrude1_2 -->
+    <visual>
+      <origin xyz="-0.197626 0.253167 -0.0917082" rpy="-0 -0 3.14159"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part2__boss_extrude1.stl"/>
+      </geometry>
+      <material name="part2__boss_extrude1_2_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.197626 0.253167 -0.0917082" rpy="-0 -0 3.14159"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part2__boss_extrude1.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part part5__boss_extrude1_2 -->
+    <visual>
+      <origin xyz="0.243654 0.203167 -0.0392082" rpy="1.5708 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part5__boss_extrude1.stl"/>
+      </geometry>
+      <material name="part5__boss_extrude1_2_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.243654 0.203167 -0.0392082" rpy="1.5708 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part5__boss_extrude1.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  
+  <!-- Link part1__cut_extrude1 -->
+  <link name="part1__cut_extrude1">
+    <inertial>
+      <origin xyz="0 0 -0" rpy="0 0 0"/>
+      <mass value="0.497628"/>
+      <inertia ixx="0.000472747" ixy="-0" ixz="-0" iyy="0.000472747" iyz="-0" izz="0.000646917"/>
+    </inertial>
+    <!-- Part part1__cut_extrude1 -->
+    <visual>
+      <origin xyz="0 0 0.03" rpy="-1.5708 0 -0"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part1__cut_extrude1.stl"/>
+      </geometry>
+      <material name="part1__cut_extrude1_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <!-- cylinder instead of mesh - Gazebo wheels grip properly with a simple shape -->
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.05" length="0.06"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Joint from part4__cut_extrude1 to part1__cut_extrude1 -->
+  <joint name="left_wheel" type="continuous">
+    <origin xyz="-0.197626 0.203167 -0.0917082" rpy="-1.5708 -0.0573371 -0"/>
+    <parent link="part4__cut_extrude1"/>
+    <child link="part1__cut_extrude1"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="10" velocity="10"/>
+  </joint>
+  <!-- Link part1__cut_extrude1_2 -->
+  <link name="part1__cut_extrude1_2">
+    <inertial>
+      <origin xyz="-0 0 0" rpy="0 0 0"/>
+      <mass value="0.497628"/>
+      <inertia ixx="0.000472747" ixy="-0" ixz="-0" iyy="0.000472747" iyz="0" izz="0.000646917"/>
+    </inertial>
+    <!-- Part part1__cut_extrude1_2 -->
+    <visual>
+      <origin xyz="0 0 0.03" rpy="-1.5708 0 -0"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part1__cut_extrude1.stl"/>
+      </geometry>
+      <material name="part1__cut_extrude1_2_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <!-- cylinder instead of mesh - Gazebo wheels grip properly with a simple shape -->
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.05" length="0.06"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Joint from part4__cut_extrude1 to part1__cut_extrude1_2 -->
+  <joint name="right_wheel" type="continuous">
+    <origin xyz="-0.197626 -0.186833 -0.0917082" rpy="1.5708 0 -0"/>
+    <parent link="part4__cut_extrude1"/>
+    <child link="part1__cut_extrude1_2"/>
+    <axis xyz="0 0 -1"/>
+    <limit effort="10" velocity="10"/>
+  </joint>
+  <!-- Link part3__cut_extrude1 -->
+  <link name="part3__cut_extrude1">
+    <inertial>
+      <origin xyz="0.0316928 -0.0156171 -0.0549314" rpy="0 0 0"/>
+      <mass value="0.154303"/>
+      <inertia ixx="0.000245313" ixy="-2.67644e-05" ixz="7.41806e-05" iyy="0.000202046" iyz="-2.78331e-06" izz="0.000224642"/>
+    </inertial>
+    <!-- Part part3__cut_extrude1 -->
+    <visual>
+      <origin xyz="-0.0126879 -0.04 -0.085" rpy="-3.14159 -0 0"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part3__cut_extrude1.stl"/>
+      </geometry>
+      <material name="part3__cut_extrude1_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.0126879 -0.04 -0.085" rpy="-3.14159 -0 0"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part3__cut_extrude1.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part part2__boss_extrude1_3 -->
+    <visual>
+      <origin xyz="0.0498121 -0.055 -0.07" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part2__boss_extrude1.stl"/>
+      </geometry>
+      <material name="part2__boss_extrude1_3_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0498121 -0.055 -0.07" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part2__boss_extrude1.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link part1__cut_extrude1_3 -->
+  <link name="part1__cut_extrude1_3">
+    <inertial>
+      <origin xyz="-0 0 -0" rpy="0 0 0"/>
+      <mass value="0.497628"/>
+      <inertia ixx="0.000472747" ixy="0" ixz="-0" iyy="0.000472747" iyz="-0" izz="0.000646917"/>
+    </inertial>
+    <!-- Part part1__cut_extrude1_3 -->
+    <visual>
+      <origin xyz="-0 0 0.03" rpy="-1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part1__cut_extrude1.stl"/>
+      </geometry>
+      <material name="part1__cut_extrude1_3_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <!-- cylinder instead of mesh; radius 2.5 mm under the real 0.05 so the caster
+         sits level with the drive wheels (in CAD it reaches 2.5 mm lower) -->
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.0475" length="0.06"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Joint from part3__cut_extrude1 to part1__cut_extrude1_3 -->
+  <joint name="caster_left_wheel" type="continuous">
+    <origin xyz="0.0498121 -0.005 -0.07" rpy="1.5708 0.143246 3.14159"/>
+    <parent link="part3__cut_extrude1"/>
+    <child link="part1__cut_extrude1_3"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="10" velocity="10"/>
+  </joint>
+  <!-- Joint from part4__cut_extrude1 to part3__cut_extrude1 -->
+  <joint name="caster_left_swivel_continuous" type="continuous">
+    <origin xyz="0.243654 0.203167 -0.0242082" rpy="0 -0 -0.0947716"/>
+    <parent link="part4__cut_extrude1"/>
+    <child link="part3__cut_extrude1"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="10" velocity="10"/>
+  </joint>
+  <!-- Link part3__cut_extrude1_2 -->
+  <link name="part3__cut_extrude1_2">
+    <inertial>
+      <origin xyz="0.0316928 -0.0156171 -0.0549314" rpy="0 0 0"/>
+      <mass value="0.154303"/>
+      <inertia ixx="0.000245313" ixy="-2.67644e-05" ixz="7.41806e-05" iyy="0.000202046" iyz="-2.78331e-06" izz="0.000224642"/>
+    </inertial>
+    <!-- Part part3__cut_extrude1_2 -->
+    <visual>
+      <origin xyz="-0.0126879 -0.04 -0.085" rpy="-3.14159 0 0"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part3__cut_extrude1.stl"/>
+      </geometry>
+      <material name="part3__cut_extrude1_2_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.0126879 -0.04 -0.085" rpy="-3.14159 0 0"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part3__cut_extrude1.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part part2__boss_extrude1_4 -->
+    <visual>
+      <origin xyz="0.0498121 -0.055 -0.07" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part2__boss_extrude1.stl"/>
+      </geometry>
+      <material name="part2__boss_extrude1_4_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0498121 -0.055 -0.07" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part2__boss_extrude1.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Link part1__cut_extrude1_4 -->
+  <link name="part1__cut_extrude1_4">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.497628"/>
+      <inertia ixx="0.000472747" ixy="-0" ixz="0" iyy="0.000472747" iyz="0" izz="0.000646917"/>
+    </inertial>
+    <!-- Part part1__cut_extrude1_4 -->
+    <visual>
+      <origin xyz="0 0 0.03" rpy="-1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://my_robot_description/meshes/part1__cut_extrude1.stl"/>
+      </geometry>
+      <material name="part1__cut_extrude1_4_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <!-- cylinder instead of mesh; radius 2.5 mm under the real 0.05 so the caster
+         sits level with the drive wheels (in CAD it reaches 2.5 mm lower) -->
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.0475" length="0.06"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- Joint from part3__cut_extrude1_2 to part1__cut_extrude1_4 -->
+  <joint name="caster_right_wheel" type="continuous">
+    <origin xyz="0.0498121 -0.005 -0.07" rpy="-1.5708 7.2504e-08 0"/>
+    <parent link="part3__cut_extrude1_2"/>
+    <child link="part1__cut_extrude1_4"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="10" velocity="10"/>
+  </joint>
+  <!-- Joint from part4__cut_extrude1 to part3__cut_extrude1_2 -->
+  <joint name="caster_right_swivel_continuous" type="continuous">
+    <origin xyz="0.243654 -0.186833 -0.0242082" rpy="0 -0 -0.0573371"/>
+    <parent link="part4__cut_extrude1"/>
+    <child link="part3__cut_extrude1_2"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="10" velocity="10"/>
+  </joint>
+</robot>
