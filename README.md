@@ -263,58 +263,53 @@ ros2 run my_robot_autonomy eeg_check stream   # the stream arrives, 256 Hz, 5 ch
 ros2 run my_robot_autonomy eeg_check alpha    # participant closes their eyes for 10 s: alpha shows at Oz = good contact
 ```
 
-**B4. Start the system** (in WSL):
+**B4. Start the system.** Open a WSL terminal (**Terminal 1**) and paste:
 ```bash
 cd ~/eye2steering_ws
+colcon build
 source install/setup.bash
-ros2 launch my_robot_bringup walker_vr.launch.xml eeg:=muse
+ros2 launch my_robot_bringup my_robot_nav.launch.xml vr:=true eeg:=muse
 ```
 This starts the simulated store and walker, the planner, the hazard loop, the EEG decoder, rosbridge, the web server
 and RViz. The walker **waits** until the operator starts it.
 
-**B5. Open the operator page** on the PC: `https://localhost:8443/operator.html`. It shows the EEG signal quality,
-each hazard's state, and the controls in [Operator controls](#operator-controls).
-
-**Spectator views (optional), so other people can watch.** Open any of these on the PC:
-
-| View | How | What it shows |
-|---|---|---|
-| **Gazebo 3D view** | In a new WSL terminal, run the two commands below | The simulated store and the walker moving through it, from any angle (drag to orbit) |
-| **Headset mirror** | Open `https://localhost:8443/spectator.html` in a PC browser | The **same scene the participant sees**, from their head position: tags, flicker and floor trajectory included |
-| **Quest casting** | On the Quest: **Camera → Cast**, to a phone or `oculus.com/casting` | The participant's actual headset view |
-| **RViz** | Opens automatically | The operator's view: map, planned path, tentacles, hazard states |
-
-Gazebo 3D view:
+**B5. Open the 3D view, so other people can watch.** Open a second WSL terminal (**Terminal 2**) and paste:
 ```bash
 export IGN_GAZEBO_RESOURCE_PATH=$HOME/eye2steering_ws/install/my_robot_description/share
 LIBGL_ALWAYS_SOFTWARE=1 ign gazebo -g --render-engine ogre2
 ```
-It joins the simulation that's already running (it doesn't start a second one), and closing it doesn't affect the
-session. Gazebo only shows the physical world, so the tags and floor lines aren't drawn there. Use the headset
-mirror or casting to see those. (`walker_vr.launch.xml gazebo_view:=true` opens it automatically.)
+This opens Gazebo's 3D window on the simulation that's already running: the store and the walker moving through it,
+from any angle (drag to orbit). Closing it doesn't affect the session.
 
-**B6. Put the headset on the participant.**
+Gazebo only shows the physical world, so the flickering tags and floor lines aren't drawn there. To see **exactly
+what the participant sees**, also open `https://localhost:8443/spectator.html` in a PC browser (the headset mirror),
+or cast the Quest (**Camera → Cast**).
+
+**B6. Open the operator page** on the PC: `https://localhost:8443/operator.html`. It shows the EEG signal quality,
+each hazard's state, and the controls in [Operator controls](#operator-controls).
+
+**B7. Put the headset on the participant.**
 1. On the Quest, open the browser and go to `https://<PC-IP>:8443`.
 2. Wait for **"Connected"**, then tap **Enter VR**. (This is the only tap. Do it for the participant if needed.)
 3. Seat the participant facing forward, and press **Recentre** on the operator page so the walker's handles are in
    front of them.
 4. Ask them to rest their hands as if holding the walker's handles.
 
-**B7. Check the SSVEP response** (about 1 minute). On the operator page press **SSVEP check**. A test patch flickers
+**B8. Check the SSVEP response** (about 1 minute). On the operator page press **SSVEP check**. A test patch flickers
 in front of the participant at two frequencies in turn. The page shows PASS if the decoder detects each one. If it
 fails, check the Oz electrode (B1) before continuing.
 
-**B8. Press Start walking** on the operator page.
+**B9. Press Start walking** on the operator page.
 
-**B9. The participant just looks around naturally.**
+**B10. The participant just looks around naturally.**
 - The walker drives forward. Looking somewhere for a couple of seconds steers it that way, in open space.
 - Flickering patches appear on obstacles ahead, and fade if the participant's EEG shows they've seen them.
 - The floor lines show where the walker is about to go.
 
-**B10. To stop**, press **Stop walking** on the operator page (the walker stops), or **Stop flicker** (all tags
+**B11. To stop**, press **Stop walking** on the operator page (the walker stops), or **Stop flicker** (all tags
 stop flickering immediately). Take the headset off, then press Ctrl+C in the WSL terminal.
 
-**B11. Results** are saved to `~/eye2steering_ws/sessions/<date-time>/`: every hazard, when it was probed, the EEG
+**B12. Results** are saved to `~/eye2steering_ws/sessions/<date-time>/`: every hazard, when it was probed, the EEG
 result, speed and clearance, and the walker's path.
 
 ---
@@ -352,7 +347,7 @@ Every part can be tried with simulated stand-ins.
 
 | You have | Command | What replaces the missing part |
 |---|---|---|
-| Nothing | `ros2 launch my_robot_bringup walker_vr.launch.xml eeg:=emulator` and open `https://localhost:8443` on the PC | The browser shows the VR scene on the desktop (look around with the mouse). Simulated EEG "sees" tags that are in view. |
+| Nothing | `ros2 launch my_robot_bringup my_robot_nav.launch.xml vr:=true eeg:=emulator` and open `https://localhost:8443` on the PC | The browser shows the VR scene on the desktop (look around with the mouse). Simulated EEG "sees" tags that are in view. |
 | Quest, no Muse | `... eeg:=emulator` | Simulated EEG, driven by where the headset is actually looking |
 | Muse, no Quest | `... eeg:=muse` and open the scene on a PC monitor | The flicker is drawn on the monitor. For SSVEP testing, use a 60 Hz or higher monitor. |
 
@@ -369,7 +364,7 @@ On `https://localhost:8443/operator.html`:
 |---|---|
 | **Start walking / Stop walking** | Stands in for the grip: held or released |
 | **Stop flicker** | Turns off every flickering tag immediately (safety) |
-| **SSVEP check** | The pre-session EEG test (B7) |
+| **SSVEP check** | The pre-session EEG test (B8) |
 | **Recentre** | Puts the walker's handles in front of the participant |
 | **EEG status** | Live signal quality: OK, poor contact, or no stream |
 | **Hazard list** | Each hazard: frequency, state (waiting, probing, registered, missed) and confidence |
@@ -449,9 +444,9 @@ src/
 | Floor trajectory display | ⏳ to build |
 | EEG decoder, Muse emulator, EEG checks | ⏳ to build |
 | WebXR headset app and operator page | ⏳ to build |
-| Spectator views: headset mirror page, `gazebo_view:=true` launch option | ⏳ to build |
+| Headset mirror page (`spectator.html`) | ⏳ to build |
 | Gazebo 3D view of the running simulation (`ign gazebo -g`) | ✅ works now |
-| `walker_vr.launch.xml`, session logging | ⏳ to build |
+| VR option on `my_robot_nav.launch.xml` (`vr:=true eeg:=muse/emulator`), session logging | ⏳ to build |
 
 **Future extension, manual mode.** The user pushes the walker like a conventional one, and the robot steps in only
 when an obstacle is in the path, by braking one wheel more than the other, so the user's own push carries the walker
