@@ -275,6 +275,24 @@ and RViz. The walker **waits** until the operator starts it.
 **B5. Open the operator page** on the PC: `https://localhost:8443/operator.html`. It shows the EEG signal quality,
 each hazard's state, and the controls in [Operator controls](#operator-controls).
 
+**Spectator views (optional), so other people can watch.** Open any of these on the PC:
+
+| View | How | What it shows |
+|---|---|---|
+| **Gazebo 3D view** | In a new WSL terminal, run the two commands below | The simulated store and the walker moving through it, from any angle (drag to orbit) |
+| **Headset mirror** | Open `https://localhost:8443/spectator.html` in a PC browser | The **same scene the participant sees**, from their head position: tags, flicker and floor trajectory included |
+| **Quest casting** | On the Quest: **Camera → Cast**, to a phone or `oculus.com/casting` | The participant's actual headset view |
+| **RViz** | Opens automatically | The operator's view: map, planned path, tentacles, hazard states |
+
+Gazebo 3D view:
+```bash
+export IGN_GAZEBO_RESOURCE_PATH=$HOME/eye2steering_ws/install/my_robot_description/share
+LIBGL_ALWAYS_SOFTWARE=1 ign gazebo -g --render-engine ogre2
+```
+It joins the simulation that's already running (it doesn't start a second one), and closing it doesn't affect the
+session. Gazebo only shows the physical world, so the tags and floor lines aren't drawn there. Use the headset
+mirror or casting to see those. (`walker_vr.launch.xml gazebo_view:=true` opens it automatically.)
+
 **B6. Put the headset on the participant.**
 1. On the Quest, open the browser and go to `https://<PC-IP>:8443`.
 2. Wait for **"Connected"**, then tap **Enter VR**. (This is the only tap. Do it for the participant if needed.)
@@ -306,6 +324,29 @@ result, speed and clearance, and the walker's path.
 > With the Quest 3 and Muse, use
 > [the step-by-step section above](#read-here-setup-and-use-instructions-for-vr-quest-3-and-muse) instead. This section
 > is only for testing when one or both are missing.
+
+### The simulation on its own (no VR, no Muse)
+
+To run just the simulated walker in the store, with live mapping, Nav2 and the autonomy, but none of the VR or EEG
+parts:
+```bash
+cd ~/eye2steering_ws
+colcon build
+source install/setup.bash
+ros2 launch my_robot_bringup my_robot_nav.launch.xml
+```
+This opens RViz. To watch the walker in 3D as well, in a second terminal:
+```bash
+export IGN_GAZEBO_RESOURCE_PATH=$HOME/eye2steering_ws/install/my_robot_description/share
+LIBGL_ALWAYS_SOFTWARE=1 ign gazebo -g --render-engine ogre2
+```
+To drive by hand instead of letting the walker drive itself, add `autonomy:=false` to the launch command, and in a
+third terminal:
+```bash
+ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r /cmd_vel:=/cmd_vel_joy
+```
+
+### With simulated stand-ins for the headset or Muse
 
 Every part can be tried with simulated stand-ins.
 
@@ -408,6 +449,8 @@ src/
 | Floor trajectory display | ⏳ to build |
 | EEG decoder, Muse emulator, EEG checks | ⏳ to build |
 | WebXR headset app and operator page | ⏳ to build |
+| Spectator views: headset mirror page, `gazebo_view:=true` launch option | ⏳ to build |
+| Gazebo 3D view of the running simulation (`ign gazebo -g`) | ✅ works now |
 | `walker_vr.launch.xml`, session logging | ⏳ to build |
 
 **Future extension, manual mode.** The user pushes the walker like a conventional one, and the robot steps in only
