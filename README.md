@@ -12,8 +12,7 @@ their visual response. The aim is to evaluate the concept before any hardware is
 > **Status: in progress.** This README describes the system as designed. The [Status](#status) table shows which
 > parts already exist and which are still being built.
 
-> **Have a Quest 3 and a Muse?** Go straight to
-> [Using the system with the Quest 3 and Muse, step by step](#using-the-system-with-the-quest-3-and-muse-step-by-step).
+> **HAVE A QUEST 3 AND A MUSE? [READ HERE: SETUP AND USE INSTRUCTIONS FOR VR](#read-here-setup-and-use-instructions-for-vr-quest-3-and-muse)**
 
 ---
 
@@ -22,7 +21,7 @@ their visual response. The aim is to evaluate the concept before any hardware is
 2. [How it works](#how-it-works)
 3. [Safety rules](#safety-rules)
 4. [The VR evaluation build](#the-vr-evaluation-build)
-5. [**Using the system with the Quest 3 and Muse, step by step**](#using-the-system-with-the-quest-3-and-muse-step-by-step)
+5. [**READ HERE: SETUP AND USE INSTRUCTIONS FOR VR (QUEST 3 AND MUSE)**](#read-here-setup-and-use-instructions-for-vr-quest-3-and-muse)
 6. [Trying it without a headset or Muse (testing only)](#trying-it-without-a-headset-or-muse-testing-only)
 7. [Operator controls](#operator-controls)
 8. [Settings you might change](#settings-you-might-change)
@@ -141,8 +140,8 @@ These hold in every mode, and nothing in the software can switch them off.
    walker does not perform sudden recovery spins.
 7. **Speed is capped** at a slow walking pace.
 8. **Photosensitivity:** flicker is limited to **6–13 Hz** (avoiding roughly 15–25 Hz), flicker contrast is capped,
-   the participant gives consent before any flicker starts, and the operator can stop all flicker instantly. This
-   build assumes participants don't have photosensitive epilepsy. A formal study will usually need screening added.
+   and the operator can stop all flicker instantly. This build assumes participants don't have photosensitive
+   epilepsy. A formal study will usually need screening added.
 
 ---
 
@@ -190,7 +189,7 @@ the results are read correctly.
 
 ---
 
-## Using the system with the Quest 3 and Muse, step by step
+## READ HERE: SETUP AND USE INSTRUCTIONS FOR VR (QUEST 3 AND MUSE)
 
 This is the full setup, with the real headset and the real EEG.
 
@@ -252,22 +251,19 @@ same. (The second page will show an error after you accept. That's expected.)
 
 ### Part B: each session (about 15 minutes)
 
-**B1. Brief the participant and get consent.** Explain the flicker and the motion, and tell them they can stop at
-any time.
-
-**B2. Fit the Muse and the Oz electrode.** Put the Muse on, put gel on the Oz cup electrode and place it on the back
+**B1. Fit the Muse and the Oz electrode.** Put the Muse on, put gel on the Oz cup electrode and place it on the back
 of the head, on the midline just above the bump at the base of the skull. Connect it to the Muse's AUX input.
 
-**B3. Start the Muse stream on Windows.** Open **BlueMuse**, select your Muse, click **Start Streaming**. (With
+**B2. Start the Muse stream on Windows.** Open **BlueMuse**, select your Muse, click **Start Streaming**. (With
 `muselsl` instead: `muselsl stream` in a Windows terminal.)
 
-**B4. Check the EEG in WSL.** Each check prints PASS or FAIL with what to fix:
+**B3. Check the EEG in WSL.** Each check prints PASS or FAIL with what to fix:
 ```bash
 ros2 run my_robot_autonomy eeg_check stream   # the stream arrives, 256 Hz, 5 channels including AUX (Oz)
 ros2 run my_robot_autonomy eeg_check alpha    # participant closes their eyes for 10 s: alpha shows at Oz = good contact
 ```
 
-**B5. Start the system** (in WSL):
+**B4. Start the system** (in WSL):
 ```bash
 cd ~/eye2steering_ws
 source install/setup.bash
@@ -276,31 +272,31 @@ ros2 launch my_robot_bringup walker_vr.launch.xml eeg:=muse
 This starts the simulated store and walker, the planner, the hazard loop, the EEG decoder, rosbridge, the web server
 and RViz. The walker **waits** until the operator starts it.
 
-**B6. Open the operator page** on the PC: `https://localhost:8443/operator.html`. It shows the EEG signal quality,
+**B5. Open the operator page** on the PC: `https://localhost:8443/operator.html`. It shows the EEG signal quality,
 each hazard's state, and the controls in [Operator controls](#operator-controls).
 
-**B7. Put the headset on the participant.**
+**B6. Put the headset on the participant.**
 1. On the Quest, open the browser and go to `https://<PC-IP>:8443`.
 2. Wait for **"Connected"**, then tap **Enter VR**. (This is the only tap. Do it for the participant if needed.)
 3. Seat the participant facing forward, and press **Recentre** on the operator page so the walker's handles are in
    front of them.
 4. Ask them to rest their hands as if holding the walker's handles.
 
-**B8. Check the SSVEP response** (about 1 minute). On the operator page press **SSVEP check**. A test patch flickers
+**B7. Check the SSVEP response** (about 1 minute). On the operator page press **SSVEP check**. A test patch flickers
 in front of the participant at two frequencies in turn. The page shows PASS if the decoder detects each one. If it
-fails, check the Oz electrode (B2) before continuing.
+fails, check the Oz electrode (B1) before continuing.
 
-**B9. Confirm consent on the operator page**, which enables hazard flicker, then press **Start walking**.
+**B8. Press Start walking** on the operator page.
 
-**B10. The participant just looks around naturally.**
+**B9. The participant just looks around naturally.**
 - The walker drives forward. Looking somewhere for a couple of seconds steers it that way, in open space.
 - Flickering patches appear on obstacles ahead, and fade if the participant's EEG shows they've seen them.
 - The floor lines show where the walker is about to go.
 
-**B11. To stop**, press **Stop walking** on the operator page (the walker stops), or **Stop flicker** (all tags
+**B10. To stop**, press **Stop walking** on the operator page (the walker stops), or **Stop flicker** (all tags
 stop flickering immediately). Take the headset off, then press Ctrl+C in the WSL terminal.
 
-**B12. Results** are saved to `~/eye2steering_ws/sessions/<date-time>/`: every hazard, when it was probed, the EEG
+**B11. Results** are saved to `~/eye2steering_ws/sessions/<date-time>/`: every hazard, when it was probed, the EEG
 result, speed and clearance, and the walker's path.
 
 ---
@@ -308,7 +304,7 @@ result, speed and clearance, and the walker's path.
 ## Trying it without a headset or Muse (testing only)
 
 > With the Quest 3 and Muse, use
-> [the step-by-step section above](#using-the-system-with-the-quest-3-and-muse-step-by-step) instead. This section
+> [the step-by-step section above](#read-here-setup-and-use-instructions-for-vr-quest-3-and-muse) instead. This section
 > is only for testing when one or both are missing.
 
 Every part can be tried with simulated stand-ins.
@@ -332,8 +328,7 @@ On `https://localhost:8443/operator.html`:
 |---|---|
 | **Start walking / Stop walking** | Stands in for the grip: held or released |
 | **Stop flicker** | Turns off every flickering tag immediately (safety) |
-| **Consent confirmed** | Must be on before any hazard flicker is shown |
-| **SSVEP check** | The pre-session EEG test (B8) |
+| **SSVEP check** | The pre-session EEG test (B7) |
 | **Recentre** | Puts the walker's handles in front of the participant |
 | **EEG status** | Live signal quality: OK, poor contact, or no stream |
 | **Hazard list** | Each hazard: frequency, state (waiting, probing, registered, missed) and confidence |
