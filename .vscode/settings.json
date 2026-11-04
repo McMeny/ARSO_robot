@@ -1,0 +1,7 @@
+{
+    "cmake.sourceDirectory": "/home/mcmeny/eye2steering_ws/src/my_robot_description",
+    "files.associations": {
+        "*.xacro": "xml",
+        "*.urdf": "xml"
+    }
+}

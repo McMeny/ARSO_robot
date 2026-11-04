@@ -1,4 +1,6 @@
 <launch>
+    <arg name = "autonomy" default = "true" />
+
     <let name = "urdf_path"
         value = "$(find-pkg-share my_robot_description)/urdf/my_robot.urdf.xacro" />
     <let name = "world_path"
@@ -8,7 +10,7 @@
     <let name = "slam_params_path"
         value = "/opt/ros/humble/share/slam_toolbox/config/mapper_params_online_async.yaml" />
     <let name = "rviz_config_path"
-        value = "/opt/ros/humble/share/nav2_bringup/rviz/nav2_default_view.rviz" />
+        value = "$(find-pkg-share my_robot_bringup)/rviz/walker.rviz" />
     <let name = "ekf_params_path"
         value = "$(find-pkg-share my_robot_bringup)/config/ekf.yaml" />
 
@@ -69,16 +71,46 @@
         </include>
     </timer>
 
-    <!-- 6. RViz with the Nav2 layout -->
+    <!-- 6. RViz with the walker layout (paths, detection lane, the store drawn as 3D blocks) -->
     <node pkg = "rviz2" exec = "rviz2" output = "screen"
         args = "-d $(var rviz_config_path)">
         <param name = "use_sim_time" value = "true" />
     </node>
+    <node pkg = "my_robot_autonomy" exec = "world_markers" output = "screen">
+        <param name = "world_file" value = "$(var world_path)" />
+        <param name = "use_sim_time" value = "true" />
+    </node>
 
-        <!-- twist_mux - picks one driver (Nav2 or teleop) and sends it to the robot on cmd_vel_out -->
+    <!-- twist_mux - picks one driver (Nav2 or teleop) and sends it on to the collision monitor -->
     <node pkg = "twist_mux" exec = "twist_mux" output = "screen">
         <param from = "$(find-pkg-share my_robot_bringup)/config/twist_mux.yaml" />
         <param name = "use_sim_time" value = "true" />
+        <remap from = "cmd_vel_out" to = "cmd_vel_mux" />
     </node>
+
+    <!-- 7. Collision monitor - emergency brake, cmd_vel_mux in, cmd_vel_out (to the robot) out.
+            It is a lifecycle node, so it needs its own lifecycle manager to switch it on. -->
+    <node pkg = "nav2_collision_monitor" exec = "collision_monitor" name = "collision_monitor" output = "screen">
+        <param from = "$(var nav2_params_path)" />
+    </node>
+    <node pkg = "nav2_lifecycle_manager" exec = "lifecycle_manager" name = "lifecycle_manager_collision_monitor" output = "screen">
+        <param name = "use_sim_time" value = "true" />
+        <param name = "autostart" value = "true" />
+        <param name = "node_names" value = "['collision_monitor']" />
+    </node>
+
+    <!-- 8. Walker autonomy - drive forward, watch the path, slow down if the human isn't aware.
+            Turn off with autonomy:=false (e.g. to map by hand with teleop). -->
+    <group if = "$(var autonomy)">
+        <node pkg = "my_robot_autonomy" exec = "obstacle_detector" output = "screen">
+            <param name = "use_sim_time" value = "true" />
+        </node>
+        <node pkg = "my_robot_autonomy" exec = "walker_brain" output = "screen">
+            <param name = "use_sim_time" value = "true" />
+        </node>
+        <node pkg = "my_robot_autonomy" exec = "forward_goal" output = "screen">
+            <param name = "use_sim_time" value = "true" />
+        </node>
+    </group>
 
 </launch>

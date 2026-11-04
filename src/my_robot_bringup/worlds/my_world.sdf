@@ -10,8 +10,9 @@
 <sdf version="1.8">
   <world name="my_world">
 
-    <physics name="1ms" type="ignored">
-      <max_step_size>0.001</max_step_size>
+    <!-- 4 ms step - 4x less physics work and /clock traffic than 1 ms, still accurate for a slow robot -->
+    <physics name="4ms" type="ignored">
+      <max_step_size>0.004</max_step_size>
       <real_time_factor>1.0</real_time_factor>
     </physics>
 
