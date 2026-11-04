@@ -12,6 +12,9 @@ their visual response. The aim is to evaluate the concept before any hardware is
 > **Status: in progress.** This README describes the system as designed. The [Status](#status) table shows which
 > parts already exist and which are still being built.
 
+> **Have a Quest 3 and a Muse?** Go straight to
+> [Using the system with the Quest 3 and Muse, step by step](#using-the-system-with-the-quest-3-and-muse-step-by-step).
+
 ---
 
 ## Contents
@@ -19,8 +22,8 @@ their visual response. The aim is to evaluate the concept before any hardware is
 2. [How it works](#how-it-works)
 3. [Safety rules](#safety-rules)
 4. [The VR evaluation build](#the-vr-evaluation-build)
-5. [**Using the system in VR, step by step**](#using-the-system-in-vr-step-by-step)
-6. [Running without a headset or Muse](#running-without-a-headset-or-muse)
+5. [**Using the system with the Quest 3 and Muse, step by step**](#using-the-system-with-the-quest-3-and-muse-step-by-step)
+6. [Trying it without a headset or Muse (testing only)](#trying-it-without-a-headset-or-muse-testing-only)
 7. [Operator controls](#operator-controls)
 8. [Settings you might change](#settings-you-might-change)
 9. [Troubleshooting](#troubleshooting)
@@ -138,8 +141,8 @@ These hold in every mode, and nothing in the software can switch them off.
    walker does not perform sudden recovery spins.
 7. **Speed is capped** at a slow walking pace.
 8. **Photosensitivity:** flicker is limited to **6–13 Hz** (avoiding roughly 15–25 Hz), flicker contrast is capped,
-   every participant is screened and gives consent before any flicker starts, and the operator can stop all flicker
-   instantly.
+   the participant gives consent before any flicker starts, and the operator can stop all flicker instantly. This
+   build assumes participants don't have photosensitive epilepsy. A formal study will usually need screening added.
 
 ---
 
@@ -187,7 +190,9 @@ the results are read correctly.
 
 ---
 
-## Using the system in VR, step by step
+## Using the system with the Quest 3 and Muse, step by step
+
+This is the full setup, with the real headset and the real EEG.
 
 ### What you need
 - A Windows 10/11 PC with **WSL2 (Ubuntu 22.04)** and **ROS 2 Humble**, with this repository built
@@ -247,8 +252,8 @@ same. (The second page will show an error after you accept. That's expected.)
 
 ### Part B: each session (about 15 minutes)
 
-**B1. Screen the participant and get consent.** Confirm they have no history of photosensitive epilepsy or
-seizures, explain the flicker and motion, and tell them they can stop at any time.
+**B1. Brief the participant and get consent.** Explain the flicker and the motion, and tell them they can stop at
+any time.
 
 **B2. Fit the Muse and the Oz electrode.** Put the Muse on, put gel on the Oz cup electrode and place it on the back
 of the head, on the midline just above the bump at the base of the skull. Connect it to the Muse's AUX input.
@@ -300,7 +305,11 @@ result, speed and clearance, and the walker's path.
 
 ---
 
-## Running without a headset or Muse
+## Trying it without a headset or Muse (testing only)
+
+> With the Quest 3 and Muse, use
+> [the step-by-step section above](#using-the-system-with-the-quest-3-and-muse-step-by-step) instead. This section
+> is only for testing when one or both are missing.
 
 Every part can be tried with simulated stand-ins.
 
