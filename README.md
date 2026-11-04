@@ -9,6 +9,10 @@ This repository is the **VR evaluation build**: the walker, the store and the ha
 the user experiences them in a **Meta Quest 3** in full VR, and a **Muse EEG headband with an Oz electrode** reads
 their visual response. The aim is to evaluate the concept before any hardware is funded.
 
+> **Branch `tentacle-only-driving`:** this version has **no Nav2 planner and no SLAM**. The walker drives
+> reactively along a fan of candidate arcs (tentacles) - see [How it drives](#how-it-drives-tentacle-only).
+> The Nav2 version is on `MENY_MANUAL_EXTENDED`.
+
 > **Status: built and tested in simulation** (with the emulated Muse and a simulated headset). Not yet tried with a
 > real Quest 3 and Muse - see [Status](#status).
 
@@ -70,6 +74,25 @@ made by about **2.5 m**. Only then, if the hazard still isn't registered, does t
 this gives about 5 s, which is room for 2–3 EEG decoding windows. A hazard that appears closer than 4 m (for
 example, from behind a shelf) is probed straight away, and defaults to cautious if there isn't time to decide.
 
+### How it drives (tentacle-only)
+
+There's no map and no route planner. 20 times a second the walker checks a fan of 15 candidate arcs ("tentacles"),
+from hard left through straight to hard right, against the LiDAR:
+- each arc's corridor is the walker's width plus 10 cm either side, widened on curves to cover the outer front
+  corner, which swings wider than the centre line
+- an arc counts as usable if it's clear for at least 55 cm
+- among the usable arcs it picks the one that best balances: going where the user wants (head direction), staying on
+  the arc it was already following (no zig-zag), room ahead, and keeping away from things at the sides
+- speed: normal pace × the hazard cap, slower as the room ahead shrinks and in tight curves, with smooth acceleration
+
+So it drives straight until something is in the way, curves round clutter, turns smoothly at walls, and keeps to the
+middle of aisles. If no arc is usable it turns slowly on the spot (only if nothing is within its turning circle), or
+else backs out slowly for at least 2.5 s, or waits. The "wider berth" for a missed hazard widens the corridor around
+that hazard only, and only where it still leaves a way through.
+
+**What it can't do:** plan a route around a whole shelf to reach somewhere specific. It reacts to what's in front,
+and the user's head direction says which way to go.
+
 ### The trajectory display
 
 The headset projects the walker's short-term path onto the floor: a **centre line and two edge lines** marking its
@@ -80,16 +103,16 @@ full footprint over the next **2 seconds**. The user always sees where they and 
 
 ### Head-guided direction
 
-A planner on its own doesn't know where the user wants to go, which is one reason autonomous paths in open space can
+An autonomous walker on its own doesn't know where the user wants to go, which is one reason autonomous paths in open space can
 look aimless. People tend to turn their heads shortly before changing walking direction, so the walker uses head
 direction to choose where to go. Steering authority is **shared according to risk**, and risk is measured as
 clearance: the distance to the nearest obstacle along the walker's path.
 
 | Situation | Who steers |
 |---|---|
-| **Open space** (little at stake) | The user's head direction sets the heading of the walker's forward goal, and the planner plans a path to it. The walker goes where the user is facing. |
+| **Open space** (little at stake) | The user's head direction sets the direction the walker drives in, and it picks the clear arc closest to it. The walker goes where the user is facing. |
 | **Obstacles nearby** | The head's influence fades as clearance shrinks. It then only chooses between open ways forward at decision points, such as the end of an aisle, a junction or a doorway. |
-| **Collision imminent** | The planner and the collision monitor are fully in charge. |
+| **Collision imminent** | The walker's own obstacle avoidance and the collision monitor are fully in charge. |
 
 To find the open ways forward, the walker checks a **fan of candidate arcs** ("tentacles"), from hard left through
 straight to hard right, against the LiDAR. Head direction picks among the arcs that are clear.
@@ -98,7 +121,8 @@ straight to hard right, against the LiDAR. Head direction picks among the arcs t
 - Head direction is low-pass filtered over 1–2 s, with a deadband of about ±12° and a limit on turn rate. Brief
   glances average out, and only a sustained look produces a gentle turn.
 - Looks towards a tagged hazard are ignored, because those are the hazard probe at work, not a choice of direction.
-- Head direction only **biases** the planner's goal. It's never a direct command, so obstacle avoidance still plans
+- Head direction only **biases** which way the walker prefers to go. It's never a direct command: only arcs that are
+  clear of obstacles can be chosen, so obstacle avoidance still decides every move.
   every path.
 - Every turn is previewed on the floor display first. Looking back straightens the preview and cancels the turn.
 
@@ -131,10 +155,10 @@ These hold in every mode, and nothing in the software can switch them off.
 
 1. **The EEG never commands motion.** The walker avoids every obstacle regardless. The EEG only changes how
    cautiously it does so.
-2. **Head direction only biases the planner's goal**, and its influence fades as obstacles get closer.
+2. **Head direction only biases the walker's choice of direction**, and its influence fades as obstacles get closer.
 3. **Obstacle avoidance and the collision monitor run at all times.**
 4. **Missing or uncertain EEG means cautious behaviour.**
-5. **The walker stops if commands stop.** If the planner or any input goes silent, the walker receives a zero
+5. **The walker stops if commands stop.** If the driver or any input goes silent, the walker receives a zero
    command rather than carrying on at its last speed.
 6. **No surprise motion.** Any slowing or change of course is shown on the floor display before it happens. The
    walker never spins on the spot to recover. If it's boxed in, its last resort is to back up 20 cm at 5 cm/s.
@@ -181,7 +205,7 @@ the results are read correctly.
  ┌──────────────────────────────────┐        ┌──────────────────────────────────────────────────────┐
  │ Muse ──Bluetooth──► BlueMuse /   │  LSL   │  EEG decoder ──► probe results ──► hazard loop        │
  │                     muselsl ─────┼───────►│                                       │               │
- └──────────────────────────────────┘        │  Gazebo (walker + store) ◄── Nav2 ◄── walker brain    │
+ └──────────────────────────────────┘        │  Gazebo (walker + store) ◄─ tentacle driver ◄─ brain  │
                                              │      │ LiDAR                     ▲        ▲           │
  ┌──────────────────────────────────┐  Wi-Fi │      └──► hazard tracker ────────┘        │           │
  │ Quest 3 browser (WebXR app)      │◄──────►│  web bridge (https + wss :8443) head steering ┘       │
@@ -281,7 +305,7 @@ colcon build
 source install/setup.bash
 ros2 launch my_robot_bringup my_robot_nav.launch.xml vr:=true eeg:=muse
 ```
-This starts the simulated store and walker, the planner, the hazard loop, the EEG decoder, the web bridge and RViz
+This starts the simulated store and walker, the tentacle driver, the hazard loop, the EEG decoder, the web bridge and RViz
 (for the operator). Add `gazebo_view:=true` to also open the Gazebo 3D window (B5) automatically. The walker **waits** until the operator starts it.
 
 **B5. Let other people watch, live.** While the participant is in VR, anyone at the PC can watch the walker moving
@@ -343,7 +367,7 @@ result, speed and clearance, and the walker's path.
 
 ### The simulation on its own (no VR, no Muse)
 
-To run just the simulated walker in the store, with live mapping, Nav2 and the autonomy, but none of the VR or EEG
+To run just the simulated walker in the store, driving itself along the tentacles, but none of the VR or EEG
 parts:
 ```bash
 cd ~/eye2steering_ws
@@ -419,7 +443,7 @@ To watch the session in RViz, in Gazebo 3D, or through the participant's eyes, s
 | Quest shows "This site can't be reached" | Quest and PC not on the same Wi-Fi, mirrored networking not on (A3), or firewall (A4) |
 | Quest says "Connecting…" forever | The system isn't running (B4), or the page was opened before it started: reload |
 | PC browser warns about the page | Expected with the self-signed certificate: choose Advanced → Proceed (A7) |
-| Walker doesn't move after Start walking | Nav2 is still starting (about 20 s after launch). The operator page shows the state. |
+| Walker doesn't move after Start walking | The system is still starting (about 10 s after launch). The operator page shows the state. |
 | No **Enter VR** button | The page was opened with `http://` instead of `https://` |
 | `eeg_check stream` finds no stream | BlueMuse isn't streaming, or mirrored networking (A3) isn't on |
 | Stream found but no AUX channel | Turn on the AUX channel in the streaming tool's settings |
@@ -436,12 +460,12 @@ To watch the session in RViz, in Gazebo 3D, or through the participant's eyes, s
 ```
 src/
 ├── my_robot_description/   robot model (URDF/xacro, meshes), LiDAR, IMU, camera
-├── my_robot_bringup/       launch files, Nav2 / EKF / twist_mux config, the store world, RViz layouts
+├── my_robot_bringup/       launch files, EKF / twist_mux / collision monitor config, the store world, RViz layouts
 ├── my_robot_autonomy/      the walker's behaviour (Python nodes)
 │   ├── hazard_tracker      LiDAR → tracked hazards, relevance, probe queue, frequencies
 │   ├── tentacles           fan of candidate arcs, the open ways forward
 │   ├── walker_brain        per-hazard decisions → speed cap and extra clearance
-│   ├── forward_goal        the walker's forward goal, biased by head direction
+│   ├── tentacle_driver     drives along the best clear tentacle, biased by head direction
 │   ├── trajectory_overlay  the 2 s floor display (centre and edge lines, authority)
 │   ├── eeg_decoder         Muse/LSL → SSVEP present / absent per hazard; the SSVEP check
 │   ├── muse_emulator       simulated EEG for testing without a Muse
@@ -460,7 +484,7 @@ src/
 | Part | State |
 |---|---|
 | Simulated walker: LiDAR, IMU, camera, EKF, Gazebo store world | ✅ done |
-| Live SLAM, Nav2 with the walker's footprint, collision monitor, twist_mux | ✅ done |
+| Tentacle-only driving (no Nav2 planner, no SLAM), collision monitor, twist_mux | ✅ done, tested in sim |
 | Stop when commands stop; no recovery spins (gentle 20 cm back-up as last resort) | ✅ done |
 | Hazard tracking, relevance, probe queue, frequencies | ✅ done, tested in sim |
 | Tentacle fan | ✅ done, tested in sim |
@@ -472,6 +496,23 @@ src/
 | VR option on `my_robot_nav.launch.xml` (`vr:=true eeg:=muse/emulator gazebo_view:=true`), session logging | ✅ done |
 | **With a real Quest 3** (WebXR, 90 Hz flicker, recentre, comfort) | ⏳ not tried yet |
 | **With a real Muse + Oz** (BlueMuse/muselsl over LSL from Windows, real SSVEP) | ⏳ not tried yet |
+
+**Tentacle-only vs Nav2, same 7-minute test** (simulated user who notices 60 % of hazards):
+
+| | Nav2 version | Tentacle-only |
+|---|---|---|
+| Distance driven | 95 m | 92 m |
+| Contacts with anything | 0 | 0 |
+| Closest the body got | 7.1 cm | 8.7 cm |
+| Stopped ≥ 5 s / reversals | 0 / 0 | 0 / 1 |
+| Floor line error after 2 s (median / 95th) | 4.2 / 23 cm | **2.1 / 6 cm** |
+| Floor line error at the far end (median / 95th) | 20 / 106 cm | **7.7 / 54 cm** |
+| Noticed hazards registered in time | 4 of 6 | 1 of 3 |
+| Time in careful mode | 4.5 % | 12.5 % |
+
+Driving and safety are about the same, and the floor display is far more accurate, because the walker follows exactly
+the arc it shows. The hazard loop does worse: hazards often only count as "on the path" late, because the path is
+the current arc rather than a planned route, so they get less time to be probed.
 
 **Known limitations, from testing in simulation:**
 - In very tight spots (a narrow gap next to clutter) the walker can hesitate for up to about 20 s before it finds a

@@ -6,8 +6,9 @@ Speed - the lowest limit always wins:  actual = lowest of (grip, hazard cap, col
   hazard cap  - 100 % normally; careful_percent while any MISSED hazard is ahead.
                 Sent to Nav2 on /speed_limit. The EEG can only ever lower the ceiling.
 
-Wider berth - while a MISSED hazard is ahead, the costmaps' inflation is widened
-  (inflation_radius / cost_scaling_factor), so Nav2 plans further away from obstacles.
+Wider berth - while a MISSED hazard is ahead, extra_clearance is published in /walker_status;
+  the tentacle fan widens its corridor by that much, so the walker keeps further from obstacles.
+  (If Nav2 costmaps are running, their inflation is widened too.)
 
 Stop when commands stop - publishes zeros on cmd_vel_idle (the lowest twist_mux input),
   so if Nav2 or teleop go silent the walker gets 0 instead of carrying on at its last speed.

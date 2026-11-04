@@ -21,7 +21,7 @@ setup(
             'tentacles = my_robot_autonomy.tentacles:main',
             'hazard_tracker = my_robot_autonomy.hazard_tracker:main',
             'walker_brain = my_robot_autonomy.walker_brain:main',
-            'forward_goal = my_robot_autonomy.forward_goal:main',
+            'tentacle_driver = my_robot_autonomy.tentacle_driver:main',
             'trajectory_overlay = my_robot_autonomy.trajectory_overlay:main',
             'eeg_decoder = my_robot_autonomy.eeg_decoder:main',
             'muse_emulator = my_robot_autonomy.muse_emulator:main',

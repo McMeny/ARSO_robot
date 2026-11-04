@@ -15,8 +15,6 @@
         value = "$(find-pkg-share my_robot_bringup)/worlds/my_world.sdf" />
     <let name = "nav2_params_path"
         value = "$(find-pkg-share my_robot_bringup)/config/nav2_params.yaml" />
-    <let name = "slam_params_path"
-        value = "/opt/ros/humble/share/slam_toolbox/config/mapper_params_online_async.yaml" />
     <let name = "rviz_config_path"
         value = "$(find-pkg-share my_robot_bringup)/rviz/walker.rviz" />
     <let name = "ekf_params_path"
@@ -80,21 +78,11 @@
         <executable cmd = "ign gazebo -g --render-engine ogre2" output = "screen" />
     </group>
 
-    <!-- 4 + 5. SLAM and Nav2, started 5 s later so Gazebo and the robot are ready first -->
-    <!-- CREATES THE MAP FRAME, FOR BETTER ODOMETRY-->
-    <timer period = "5.0">
-        
-        <node pkg = "slam_toolbox" exec = "async_slam_toolbox_node" output = "screen">
-            <param from = "$(var slam_params_path)" />
-            <param name = "use_sim_time" value = "true" />
-        </node>
-
-        <!-- our copy of Nav2's navigation launch - it adds the no-spin behaviour tree -->
-        <include file = "$(find-pkg-share my_robot_bringup)/launch/navigation_launch.py">
-            <arg name = "use_sim_time" value = "true" />
-            <arg name = "params_file" value = "$(var nav2_params_path)" />
-        </include>
-    </timer>
+    <!-- 4. No SLAM, no Nav2 on this branch: the walker drives reactively along the tentacles.
+            The map frame is fixed to odom (the walker starts at the world origin, and the EKF
+            with the IMU keeps odometry drift small), so the headset, hazards and RViz still use map. -->
+    <node pkg = "tf2_ros" exec = "static_transform_publisher" name = "map_to_odom"
+        args = "--frame-id map --child-frame-id odom" />
 
     <!-- 6. RViz with the walker layout (paths, tentacles, hazards, the store drawn as 3D blocks) -->
     <node pkg = "rviz2" exec = "rviz2" output = "screen"
@@ -113,7 +101,8 @@
         <remap from = "cmd_vel_out" to = "cmd_vel_mux" />
     </node>
 
-    <!-- 7. Collision monitor - emergency brake, cmd_vel_mux in, cmd_vel_out (to the robot) out.
+    <!-- 7. Collision monitor - emergency brake (kept from Nav2's tools: it is a safety layer, not navigation),
+            cmd_vel_mux in, cmd_vel_out (to the robot) out.
             It is a lifecycle node, so it needs its own lifecycle manager to switch it on. -->
     <node pkg = "nav2_collision_monitor" exec = "collision_monitor" name = "collision_monitor" output = "screen">
         <param from = "$(var nav2_params_path)" />
@@ -124,8 +113,8 @@
         <param name = "node_names" value = "['collision_monitor']" />
     </node>
 
-    <!-- 8. Walker autonomy - drive forward (head-guided), the tentacle fan, speed and berth decisions.
-            Turn off with autonomy:=false (e.g. to map by hand with teleop). -->
+    <!-- 8. Walker autonomy - the tentacle fan, driving along it (head-guided), speed and berth decisions.
+            Turn off with autonomy:=false (e.g. to drive by hand with teleop). -->
     <group if = "$(var autonomy)">
         <node pkg = "my_robot_autonomy" exec = "tentacles" output = "screen">
             <param name = "use_sim_time" value = "true" />
@@ -135,7 +124,7 @@
             <param name = "start_enabled" value = "$(var start_enabled)" />
             <param name = "use_sim_time" value = "true" />
         </node>
-        <node pkg = "my_robot_autonomy" exec = "forward_goal" output = "screen">
+        <node pkg = "my_robot_autonomy" exec = "tentacle_driver" output = "screen">
             <param from = "$(var head_params_path)" />
             <param name = "start_enabled" value = "$(var start_enabled)" />
             <param name = "use_sim_time" value = "true" />
