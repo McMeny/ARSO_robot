@@ -17,11 +17,11 @@
 //   stationary  the left thumbstick pushes forward / pulls back, the right one turns
 //   desktop     W / S push / pull, A / D turn (the grip counts as held while a key is down)
 // Hold A or X for 1 s to recentre / reset. Head pose goes to ROS 20 times a second.
-// In VR a guide panel always says what to do next (guidance.js): wait, hold the grips, start, start again.
+// In VR a guide panel always says what to do next (guidance.js): wait, a six-step walkthrough, start again.
 import * as THREE from '../vendor/three.module.js';
 import { connect, rosToThree, threeToRos, rosHeading, makeScene, addWorld, makeWalker, placeWalker,
          HazardTags, Trajectory, TestPatch, TextPanel } from './common.js';
-import { guidance } from './guidance.js';
+import { guidance, Lesson } from './guidance.js';
 
 const DESKTOP_EYE_HEIGHT = 1.6;   // desktop mode only - in VR the real eye height is used
 const HANDLE_X = -0.1;            // m, handles behind base_footprint (see makeWalker)
@@ -84,7 +84,7 @@ let anchor = null;              // set by recentre (see below)
 let safety = { stop: false, reason: '' };
 let walkerEnabled = false;      // the operator's Start walking
 let grip = { left: 0, right: 0 };
-let everMoved = false, firstMoveAt = 0, lastActive = 0, stuckSince = null;   // for the guide panel
+let lesson = new Lesson(), lastActive = 0, stuckSince = null;   // for the guide panel
 
 const link = connect({
   config: (m) => { config = { ...config, ...m }; showStatus(); },
@@ -286,16 +286,19 @@ function readGrip(t) {
 
 function nextStep(t) {
   const moving = moveRate > 0.05 || !!steering.turning_in_place;
-  if (moving && !everMoved) { everMoved = true; firstMoveAt = t; }
-  const active = moving || Math.abs(steering.user_speed || 0) > 0.02;
+  const speed = steering.user_speed || 0;
+  const active = moving || Math.abs(speed) > 0.02;
   if (active) lastActive = t;
-  const stuck = steering.grip === 'STOP' && grip.left >= 0.2 && grip.right >= 0.2;
+  const hands = grip.left >= 0.2 && grip.right >= 0.2;
+  const stuck = steering.grip === 'STOP' && hands;
   if (!stuck) stuckSince = null;
   else if (stuckSince === null) stuckSince = t;
+  if (walkerEnabled) lesson.update({ held: hands && steering.grip !== 'STOP', moving, speed, yaw: pose.yaw, t });
   return guidance({
     connected, recentred: !!anchor, gripState: steering.grip, enabled: walkerEnabled, left: grip.left, right: grip.right,
-    mode: vrMode, safetyReason: safety.reason, busy: !!(steering.notice || steering.hint), active, everMoved,
-    movedFor: t - firstMoveAt, stillFor: t - lastActive, stuckFor: stuckSince === null ? 0 : t - stuckSince,
+    mode: vrMode, safetyReason: safety.reason, busy: !!(steering.notice || steering.hint), active,
+    step: lesson.step, lesson: lesson.text(vrMode),
+    stillFor: t - lastActive, stuckFor: stuckSince === null ? 0 : t - stuckSince,
   });
 }
 
@@ -364,7 +367,7 @@ async function setupVR() {
     }
     inVR = true;
     anchor = null;
-    everMoved = false;
+    lesson = new Lesson();
     camera.position.set(0, 0, 0);
     button.style.display = 'none';
     setTimeout(recentre, 1000);     // once the headset pose has settled

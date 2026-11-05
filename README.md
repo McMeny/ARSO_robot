@@ -381,9 +381,10 @@ fails, check the Oz electrode (B1) before continuing.
 
 **B9. Press Start walking** on the operator page.
 
-The headset then guides the participant by itself: a panel says when to wait, when to hold the grip buttons, when the
-walker is ready and how to start, and how to start moving again whenever they stop (for example **"Press and hold both
-grip buttons to start moving again"**). No Muse is needed for this: leave out `eeg:=muse` to walk with the simulated EEG.
+The headset then guides the participant by itself. A panel says when to wait, then walks them through six steps:
+hold the grips, go forward, stop, turn, back up, full stop. Each step moves on only when they've really done it. After
+that it says how to start moving again whenever they stop (for example **"Press and hold both grip buttons to start
+moving again"**). No Muse is needed for this: leave out `eeg:=muse` to walk with the simulated EEG.
 
 **B10. Tell the participant:**
 - **Hold both grip triggers: those are your hands on the handles.** Let go and the walker stops.
