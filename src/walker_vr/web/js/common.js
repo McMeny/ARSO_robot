@@ -268,11 +268,12 @@ function drawSqueezeIcon(ctx, x, y, size, colour) {
 }
 
 export class TextPanel {
-  constructor(scene, { icon = true, colour = '#ffffff' } = {}) {
+  constructor(scene, { icon = true, colour = '#ffffff', lines = 1 } = {}) {
+    this.height = 160 + 88 * (lines - 1);
     this.canvas = document.createElement('canvas');
-    this.canvas.width = 1024; this.canvas.height = 160;
+    this.canvas.width = 1024; this.canvas.height = this.height;
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.14),
+    this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.14 * this.height / 160),
       new THREE.MeshBasicMaterial({ map: this.texture, transparent: true, depthTest: false, depthWrite: false }));
     this.mesh.renderOrder = 20;
     this.mesh.visible = false;
@@ -283,13 +284,15 @@ export class TextPanel {
 
   draw(text) {
     const ctx = this.canvas.getContext('2d');
-    ctx.clearRect(0, 0, 1024, 160);
+    const h = this.height;
+    ctx.clearRect(0, 0, 1024, h);
     ctx.fillStyle = 'rgba(20, 24, 30, 0.75)';
-    ctx.beginPath(); ctx.roundRect(4, 4, 1016, 152, 40); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(4, 4, 1016, h - 8, 40); ctx.fill();
     ctx.fillStyle = this.colour; ctx.font = '600 58px sans-serif'; ctx.textBaseline = 'middle';
     const x = this.icon ? 170 : 50;
-    if (this.icon) drawSqueezeIcon(ctx, 90, 80, 110, this.colour);
-    ctx.fillText(text, x, 82, 1024 - x - 40);
+    if (this.icon) drawSqueezeIcon(ctx, 90, h / 2, 110, this.colour);
+    const rows = text.split('\n');
+    rows.forEach((row, i) => ctx.fillText(row, x, h / 2 + 2 + (i - (rows.length - 1) / 2) * 88, 1024 - x - 40));
     this.texture.needsUpdate = true;
   }
 

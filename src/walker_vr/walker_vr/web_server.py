@@ -176,7 +176,7 @@ class Bridge(Node):
             pose = PoseStamped()
             pose.header.stamp = self.get_clock().now().to_msg()
             pose.header.frame_id = 'map'
-            pose.pose.position.x, pose.pose.position.y, pose.pose.position.z = data['x'], data['y'], data['z']
+            pose.pose.position.x, pose.pose.position.y, pose.pose.position.z = float(data['x']), float(data['y']), float(data['z'])
             # yaw about z, then pitch about the new y (nose down = +pitch)
             cy, sy = math.cos(data['yaw'] / 2), math.sin(data['yaw'] / 2)
             cp, sp = math.cos(data['pitch'] / 2), math.sin(data['pitch'] / 2)

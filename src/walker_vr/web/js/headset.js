@@ -17,9 +17,11 @@
 //   stationary  the left thumbstick pushes forward / pulls back, the right one turns
 //   desktop     W / S push / pull, A / D turn (the grip counts as held while a key is down)
 // Hold A or X for 1 s to recentre / reset. Head pose goes to ROS 20 times a second.
+// In VR a guide panel always says what to do next (guidance.js): wait, hold the grips, start, start again.
 import * as THREE from '../vendor/three.module.js';
 import { connect, rosToThree, threeToRos, rosHeading, makeScene, addWorld, makeWalker, placeWalker,
          HazardTags, Trajectory, TestPatch, TextPanel } from './common.js';
+import { guidance } from './guidance.js';
 
 const DESKTOP_EYE_HEIGHT = 1.6;   // desktop mode only - in VR the real eye height is used
 const HANDLE_X = -0.1;            // m, handles behind base_footprint (see makeWalker)
@@ -58,6 +60,7 @@ const notice = new TextPanel(scene, { icon: true, colour: '#ffcf70' });
 const safetyText = new TextPanel(scene, { icon: false, colour: '#ff8080' });
 const boundaryText1 = new TextPanel(scene, { icon: false, colour: '#ffcf70' });
 const boundaryText2 = new TextPanel(scene, { icon: false, colour: '#ffcf70' });
+const guide = new TextPanel(scene, { icon: false, lines: 2 });
 
 // comfort vignette - darkens the edge of view while the walker moves (stationary mode)
 const vignette = new THREE.Mesh(new THREE.RingGeometry(0.22, 1.5, 48),
@@ -79,6 +82,9 @@ let inVR = false, connected = false, flickerOn = true, worldCount = 0;
 let bounds = null;              // Guardian polygon [[x, z], ...] in the tracking space, if known
 let anchor = null;              // set by recentre (see below)
 let safety = { stop: false, reason: '' };
+let walkerEnabled = false;      // the operator's Start walking
+let grip = { left: 0, right: 0 };
+let everMoved = false, firstMoveAt = 0, lastActive = 0, stuckSince = null;   // for the guide panel
 
 const link = connect({
   config: (m) => { config = { ...config, ...m }; showStatus(); },
@@ -88,6 +94,7 @@ const link = connect({
   steering: (m) => { steering = m; },
   test_stimulus: (m) => patch.set(m),
   flicker_enabled: (m) => { tags.flickerEnabled = m.value; flickerOn = m.value; },
+  walker_enabled: (m) => { walkerEnabled = m.value; },
   command: (m) => { if (m.name === 'recentre') recentre(); },
 }, (ok) => { connected = ok; showStatus(); });
 
@@ -275,6 +282,23 @@ function readGrip(t) {
   return { left: on, right: on };
 }
 
+// ---------- the guide panel ----------
+
+function nextStep(t) {
+  const moving = moveRate > 0.05 || !!steering.turning_in_place;
+  if (moving && !everMoved) { everMoved = true; firstMoveAt = t; }
+  const active = moving || Math.abs(steering.user_speed || 0) > 0.02;
+  if (active) lastActive = t;
+  const stuck = steering.grip === 'STOP' && grip.left >= 0.2 && grip.right >= 0.2;
+  if (!stuck) stuckSince = null;
+  else if (stuckSince === null) stuckSince = t;
+  return guidance({
+    connected, recentred: !!anchor, gripState: steering.grip, enabled: walkerEnabled, left: grip.left, right: grip.right,
+    mode: vrMode, safetyReason: safety.reason, busy: !!(steering.notice || steering.hint), active, everMoved,
+    movedFor: t - firstMoveAt, stillFor: t - lastActive, stuckFor: stuckSince === null ? 0 : t - stuckSince,
+  });
+}
+
 // ---------- desktop mode: drag to look ----------
 
 let lookYaw = 0, lookPitch = 0, dragging = false;
@@ -340,6 +364,7 @@ async function setupVR() {
     }
     inVR = true;
     anchor = null;
+    everMoved = false;
     camera.position.set(0, 0, 0);
     button.style.display = 'none';
     setTimeout(recentre, 1000);     // once the headset pose has settled
@@ -388,6 +413,7 @@ renderer.setAnimationLoop((time) => {
     moveRate += (rate - moveRate) * Math.min(dt * 4, 1);
   }
   lastPose = { ...pose };
+  guide.show(inVR ? nextStep(t) : '', camera, -0.14, tagDirs, dt);
   const vignetteOn = inVR && vrMode === 'stationary' && config.comfort_vignette;
   vignette.material.opacity = vignetteOn ? Math.min(0.55, moveRate * 1.4) : 0;
   vignette.visible = vignette.material.opacity > 0.02;
@@ -397,7 +423,7 @@ renderer.setAnimationLoop((time) => {
   if (t - lastGripSend > 0.02) {
     lastGripSend = t;
     const g = readGrip(t);
-    if (g) link.send({ type: 'grip', left: g.left, right: g.right });
+    if (g) { grip = g; link.send({ type: 'grip', left: g.left, right: g.right }); }
     const f = readPush(g || { left: 0, right: 0 });
     if (f) link.send({ type: 'handle_force', left: f.left, right: f.right });
   }
