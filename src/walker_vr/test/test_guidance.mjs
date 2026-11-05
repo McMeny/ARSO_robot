@@ -6,7 +6,7 @@ import { guidance, Lesson } from '../web/js/guidance.js';
 const ready = { connected: true, recentred: true, gripState: 'WALK', enabled: true, left: 1, right: 1, mode: 'stationary',
                 safetyReason: '', busy: false, active: false, step: 1, lesson: 'A lesson\nstep', stillFor: 0, stuckFor: 0 };
 const say = (over) => guidance({ ...ready, ...over });
-const after = { step: 8, lesson: '' };
+const after = { step: 9, lesson: '' };
 
 test('start-up: waits for the link, the recentre, the walker and the operator', () => {
   assert.match(say({ connected: false }), /Connection lost/);
@@ -52,36 +52,43 @@ test('the walkthrough moves on only when each thing is really done', () => {
   const still = { held: true, moving: false, speed: 0, yaw: 0 };
   const go = (over, t) => l.update({ ...still, ...over, t });
 
-  assert.match(l.text('stationary'), /Step 1 of 6/);
+  assert.match(l.text('stationary'), /Step 1 of 7/);
   go({ held: false }, 0);
   assert.equal(l.step, 0);
   go({}, 1);
-  assert.match(l.text('stationary'), /Step 2 of 6: Walker ready\nPush the left stick forward/);
+  assert.match(l.text('stationary'), /Step 2 of 7: Walker ready\nPush the left stick forward/);
   assert.match(l.text('room_scale'), /Walk forward/);
 
   go({ moving: true, speed: 0.3 }, 2);
   go({ moving: true, speed: 0.3 }, 3);          // a short push isn't enough
   assert.equal(l.step, 1);
   go({ moving: true, speed: 0.3 }, 3.6);
-  assert.match(l.text('stationary'), /Step 3 of 6/);
+  assert.match(l.text('stationary'), /Step 3 of 7/);
 
   go({ moving: true, speed: 0.3 }, 4);          // still moving: not stopped yet
   go({}, 5);
   go({}, 6.1);
-  assert.match(l.text('stationary'), /Step 4 of 6/);
+  assert.match(l.text('stationary'), /Step 4 of 7/);
 
   go({ yaw: 0.2 }, 7);
   assert.equal(l.step, 3);
   go({ yaw: 0.6 }, 8);
-  assert.match(l.text('stationary'), /Step 5 of 6/);
+  assert.match(l.text('stationary'), /Step 5 of 7: Head turn/);
 
-  go({ moving: true, speed: 0.3 }, 9);          // forward doesn't count as backing up
+  go({ moving: true, speed: 0.3 }, 8.5);        // pushing without the head doesn't count
+  go({ moving: true, speed: 0.3, headSteering: true }, 8.6);
+  go({ moving: true, speed: 0.3, headSteering: true }, 8.9);
+  assert.equal(l.step, 4);
+  go({ moving: true, speed: 0.3, headSteering: true }, 9.7);
+  assert.match(l.text('stationary'), /Step 6 of 7: Back up/);
+
+  go({ moving: true, speed: 0.3 }, 9.8);        // forward doesn't count as backing up
   go({ moving: true, speed: -0.2 }, 10);
   go({ moving: true, speed: -0.2 }, 11.1);
-  assert.match(l.text('stationary'), /Step 6 of 6/);
+  assert.match(l.text('stationary'), /Step 7 of 7/);
 
   go({}, 12);
-  assert.equal(l.step, 5);
+  assert.equal(l.step, 6);
   go({ held: false }, 13);
   assert.equal(l.text('stationary'), '');       // guidance() asks for the grips back
   go({}, 14);

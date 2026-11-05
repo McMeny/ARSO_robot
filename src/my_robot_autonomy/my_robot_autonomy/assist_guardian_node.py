@@ -10,10 +10,13 @@
      and it undoes its own correction once clear. How early and firmly it steps in comes from the EEG
      via the hazards (registered / eeg_valid): a missed hazard gets help sooner, a wider berth and a
      lower speed cap.
+  4. Head turn: a firm squeeze (STEER) while pushing forward turns the walker towards where the head
+     points, before step 3, so the guardian checks it like any other push. Looking alone does nothing,
+     and a head turn never moves the walker without a push.
 
 The EEG never commands motion: it only changes how the guardian holds the user's push back.
 
-In:  /scan, /walker/grip_state, /walker/handle_force, /hazards
+In:  /scan, /walker/grip_state, /walker/handle_force, /head_pose (map frame), /hazards
 Out: /cmd_vel_guardian (-> velocity smoother -> twist_mux -> collision monitor),
      /walker/intended_path (where the push alone is taking the user),
      /walker/trajectory (+ _left, _right: where the walker will actually go), /walker/tentacles_debug,
@@ -33,9 +36,9 @@ from std_msgs.msg import Float32, String
 from tf2_ros import Buffer, TransformListener, TransformException
 from visualization_msgs.msg import Marker, MarkerArray
 
-from my_robot_autonomy.guardian_core import Admittance, DeadMan, Guardian, GuardParams, deadband
+from my_robot_autonomy.guardian_core import Admittance, DeadMan, Guardian, GuardParams, deadband, head_steer
 from my_robot_autonomy.tentacle_core import (Footprint, HazardLite, Params, front_lines, outline, rotation_poses,
-                                             self_filter, shape_poses)
+                                             self_filter, shape_poses, wrap)
 from walker_interfaces.msg import GripState, HandleForce, Hazard, HazardArray, SteeringStatus
 
 PERIOD = 0.05
@@ -71,6 +74,9 @@ class AssistGuardianNode(Node):
         self.edge_half_width = p('edge_half_width', 0.25).value
         self.display_extra = p('berth_display_extra', 0.12).value
         self.self_filter = p('self_filter', True).value
+        self.head_filter_time = p('head_filter_time', 0.6).value
+        self.head_timeout = p('head_timeout', 1.0).value
+        self.hazard_exclusion = math.radians(p('hazard_exclusion_deg', 10.0).value)
 
         self.points = np.empty((0, 2))
         self.scan_time = -math.inf
@@ -80,6 +86,8 @@ class AssistGuardianNode(Node):
         self.force = (0.0, 0.0)
         self.force_time = -math.inf
         self.hazards = []
+        self.head_yaw = None        # filtered, map frame
+        self.head_time = -math.inf
         self.blocked_since = None
         self.last_mode = None
 
@@ -99,6 +107,7 @@ class AssistGuardianNode(Node):
         self.create_subscription(LaserScan, 'scan', self.on_scan, qos_profile_sensor_data)
         self.create_subscription(GripState, 'walker/grip_state', self.on_grip, 10)
         self.create_subscription(HandleForce, 'walker/handle_force', self.on_force, 10)
+        self.create_subscription(PoseStamped, 'head_pose', self.on_head, 10)
         self.create_subscription(HazardArray, 'hazards', lambda m: setattr(self, 'hazards', m.hazards), 10)
         self.create_timer(PERIOD, self.update)
         self.get_logger().info('ASSIST + guardian: the walker moves only when pushed')
@@ -130,6 +139,21 @@ class AssistGuardianNode(Node):
     def on_force(self, msg):
         self.force = (float(msg.left), float(msg.right))
         self.force_time = self.now()
+
+    def on_head(self, msg):
+        yaw = yaw_of(msg.pose.orientation)
+        hx, hy = msg.pose.position.x, msg.pose.position.y
+        now = self.now()
+        for h in self.hazards:
+            if h.frequency > 0 and abs(wrap(math.atan2(h.position.y - hy, h.position.x - hx) - yaw)) < self.hazard_exclusion:
+                self.head_time = now   # looking at a tag is the probe, not a choice of direction
+                return
+        if self.head_yaw is None or now - self.head_time > self.head_timeout:
+            self.head_yaw = yaw
+        else:
+            a = min((now - self.head_time) / self.head_filter_time, 1.0)
+            self.head_yaw = wrap(self.head_yaw + a * wrap(yaw - self.head_yaw))
+        self.head_time = now
 
     # ---------- helpers ----------
 
@@ -177,11 +201,18 @@ class AssistGuardianNode(Node):
         if locked:
             self.adm.reset()
             fl = fr = 0.0
-        v_u, w_u = self.adm.step(fl, fr, PERIOD)
+        v_push, w_u = self.adm.step(fl, fr, PERIOD)
+        v_u, steering = v_push, False
+        if self.grip == GripState.STEER and not locked and self.head_yaw is not None \
+                and now - self.head_time < self.head_timeout:
+            error = wrap(self.head_yaw - map_from_odom[2] - odom_pose[2])
+            v_u, w_u, steering = head_steer(v_push, w_u, error, self.guardian.p)
         pushing = deadband(fl, self.adm.db) != 0 or deadband(fr, self.adm.db) != 0
         hazards = self.hazards_in_base(base_from_map)
         d = self.guardian.decide(self.points, v_u, w_u, hazards, held=not locked, dt=PERIOD, pushing=pushing)
-        self.adm.follow(d.v)
+        d.head_steering = steering
+        # head turning slows the inner wheel on purpose: that isn't the walker being held back
+        self.adm.follow(d.v * v_push / v_u if steering else d.v)
 
         cmd = Twist()
         cmd.linear.x, cmd.angular.z = float(d.v), float(d.w)
@@ -245,6 +276,7 @@ class AssistGuardianNode(Node):
         st.blocked = mode == 'blocked'
         st.caution = d.caution
         st.notice = notice
+        st.head_steering = d.head_steering
         st.user_speed = float(d.v_user)
         st.intervention = float(d.intervention)
         st.braking, st.nudging = d.braking, d.nudging

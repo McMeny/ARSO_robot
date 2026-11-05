@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from my_robot_autonomy.guardian_core import (Admittance, DeadMan, Guardian, GuardParams, limit_to_push,
+from my_robot_autonomy.guardian_core import (Admittance, DeadMan, Guardian, GuardParams, head_steer, limit_to_push,
                                              within_push, wheel_speeds)
 from my_robot_autonomy.tentacle_core import HazardLite
 
@@ -135,3 +135,43 @@ def test_never_turns_the_user_more_than_the_limit():
     for _ in range(400):                             # keep pushing straight at it, holding the scene still
         g.decide(box, 0.3, 0.0)
     assert abs(g.deviation) <= math.radians(g.p.max_deviation_deg) + 0.05
+
+
+# ---------- head turn ----------
+
+def test_head_turn_steers_towards_the_head_within_the_push():
+    p = GuardParams()
+    for error in (0.3, 1.0, 3.0, -0.3, -1.0, -3.0):
+        v, w, steering = head_steer(0.4, 0.0, error, p)
+        assert steering and v > 0.2
+        assert math.copysign(1, w) == math.copysign(1, error)
+        assert within_push(v, w, 0.4, 0.0, p.half_track)
+
+
+def test_head_turn_stays_a_curve_never_a_pivot():
+    p = GuardParams()
+    v, w, _ = head_steer(0.4, 0.0, 3.0, p)
+    assert w / v == pytest.approx(p.head_max_curvature)
+    assert p.head_max_curvature < p.spot_turn_curvature
+
+
+def test_head_turn_needs_a_forward_push_and_a_real_head_turn():
+    p = GuardParams()
+    assert head_steer(0.0, 0.0, 1.0, p) == (0.0, 0.0, False)        # no push: no motion
+    assert head_steer(-0.2, 0.0, 1.0, p) == (-0.2, 0.0, False)      # backing up
+    assert head_steer(0.4, 0.1, math.radians(9), p) == (0.4, 0.1, False)   # inside the dead zone
+
+
+def test_head_turn_gives_up_rather_than_stop_a_hard_opposite_push():
+    p = GuardParams()
+    assert head_steer(0.05, -0.8, 1.0, p) == (0.05, -0.8, False)
+
+
+def test_guardian_still_stops_a_head_turn_into_a_wall():
+    g = Guardian()
+    p = g.p
+    pts = np.c_[np.linspace(0, 3, 80), np.full(80, 0.5)]            # a wall along the left
+    v, w, _ = head_steer(0.4, 0.0, math.pi / 2, p)
+    d = g.decide(pts, v, w, pushing=True)
+    assert d.braking or d.nudging
+    assert abs(d.v) < v or d.w < w

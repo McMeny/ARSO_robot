@@ -3,6 +3,7 @@ Run in its own terminal:  ros2 run my_robot_autonomy walker_keys
 (and launch with grip:=keyboard). A terminal can't see keys being held, so keys set levels:
 
   space  hands on / off the handles (the dead-man grip)
+  f      squeeze firmly on / off (turns towards the head while pushing)
   w / s  push harder / softer (pull back below zero)        x  stop pushing
   a / d  push the right / left handle harder (turn left / right)
   e      the user noticed the nearest tagged hazard (ssvep_emulator in toggle mode)
@@ -27,6 +28,7 @@ class WalkerKeys(Node):
     def __init__(self):
         super().__init__('walker_keys')
         self.hands = False
+        self.firm = False
         self.push = 0.0     # N on each handle
         self.turn = 0.0     # N more on the right handle (and less on the left)
         self.grip_pub = self.create_publisher(GripState, 'walker/grip_keys', 10)
@@ -37,6 +39,8 @@ class WalkerKeys(Node):
     def key(self, c):
         if c == ' ':
             self.hands = not self.hands
+        elif c == 'f':
+            self.firm = not self.firm
         elif c == 'w':
             self.push = min(self.push + PUSH_STEP, 24.0)
         elif c == 's':
@@ -60,7 +64,7 @@ class WalkerKeys(Node):
         stamp = self.get_clock().now().to_msg()
         g = GripState()
         g.header.stamp = stamp
-        g.left = g.right = 0.4 if self.hands else 0.0
+        g.left = g.right = (0.9 if self.firm else 0.4) if self.hands else 0.0
         self.grip_pub.publish(g)
         f = HandleForce()
         f.header.stamp = stamp

@@ -13,6 +13,9 @@ be unit tested.
               The EEG sets how early and how firmly it steps in: a hazard the user registered gets a
               late, light correction; a missed one (or no reliable EEG) gets braking sooner, a firmer
               correction, a wider berth and a lower speed cap.
+  head turn   a firm squeeze while pushing turns the walker towards where the head points, by holding the
+              inner wheel back, so the wheels rule still holds. The result goes through the guardian
+              like any other push. A head turn alone never moves the walker.
 """
 import math
 from dataclasses import dataclass, field
@@ -118,6 +121,20 @@ def limit_to_push(k, v_u, w_u, half_track):
     return v, v * k
 
 
+def head_steer(v_u, w_u, error, p):
+    """The push (v_u, w_u) turned towards the head, `error` rad to the left of the walker's heading.
+    Returns (v, w, steering). Forward pushes only, and neither wheel ends up faster than the push."""
+    dead_zone = math.radians(p.head_dead_zone_deg)
+    if v_u < p.min_push_speed or abs(error) <= dead_zone:
+        return v_u, w_u, False
+    turn = math.copysign(p.head_gain * (abs(error) - dead_zone), error)
+    k = max(-p.head_max_curvature, min(p.head_max_curvature, (w_u + turn) / v_u))
+    v, w = limit_to_push(k, v_u, w_u, p.half_track)
+    if v < p.min_push_speed:      # the push is turning too hard the other way to bend it like this
+        return v_u, w_u, False
+    return v, w, True
+
+
 @dataclass
 class GuardParams:
     half_track: float = 0.22        # m, wheel to centre
@@ -146,6 +163,9 @@ class GuardParams:
     better_by: float = 0.4          # m more room an alternative needs to be worth bending the user's path to
     max_deviation_deg: float = 35.0  # the guardian never turns the walker further than this from the user's push
     return_gain: float = 0.6        # once clear, it undoes its own correction (1/m per rad of deviation)
+    head_gain: float = 1.0          # head turn: rad/s of turn per rad the head is past the dead zone
+    head_dead_zone_deg: float = 10.0  # the head this close to the walker's heading doesn't turn it
+    head_max_curvature: float = 1.8  # 1/m - below spot_turn_curvature, so it stays a curve, never a pivot
 
 
 @dataclass
@@ -164,6 +184,7 @@ class Decision:
     caution: bool = False
     turning_in_place: bool = False
     near_unregistered: bool = False
+    head_steering: bool = False    # the head is turning the walker (firm squeeze, while pushing)
 
 
 class Guardian:

@@ -161,7 +161,8 @@ class Bridge(Node):
         self.steering = {'grip': ['STOP', 'WALK', 'STEER'][min(msg.grip_state, 2)], 'authority': round(msg.authority, 2),
                          'turning_in_place': msg.turning_in_place, 'blocked': msg.blocked, 'caution': msg.caution,
                          'hint': msg.hint, 'notice': msg.notice, 'user_speed': round(msg.user_speed, 2),
-                         'intervention': round(msg.intervention, 2), 'braking': msg.braking, 'nudging': msg.nudging}
+                         'intervention': round(msg.intervention, 2), 'braking': msg.braking, 'nudging': msg.nudging,
+                         'head_steering': msg.head_steering}
         self.send('steering', self.steering)
 
     def on_trajectory(self, msg):

@@ -47,6 +47,13 @@ assist_guardian:
     return_gain: 0.6             # once clear, it undoes its own correction
     min_push_speed: 0.02
     blocked_notice_delay_s: 1.0
+    # head turn: a firm squeeze while pushing turns the walker towards the head
+    head_gain: 1.0               # rad/s per rad the head is past the dead zone
+    head_dead_zone_deg: 10.0     # the head this close to the walker's heading doesn't turn it
+    head_max_curvature: 1.8      # 1/m - keep below spot_turn_curvature: a curve, never a pivot
+    head_filter_time: 0.6        # s
+    head_timeout: 1.0            # s without head readings -> no head turn; pushing carries on
+    hazard_exclusion_deg: 10.0   # looking at a flickering tag isn't choosing a direction
     # floor lines
     edge_half_width: 0.25
     berth_display_extra: 0.12

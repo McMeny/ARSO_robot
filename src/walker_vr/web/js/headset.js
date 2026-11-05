@@ -15,9 +15,10 @@
 //   room scale  each hand pulls its handle through a virtual spring: walk ahead of the handles and the
 //               walker comes with you, lead with one hand and it turns, hold back and it slows
 //   stationary  the left thumbstick pushes forward / pulls back, the right one turns
-//   desktop     W / S push / pull, A / D turn (the grip counts as held while a key is down)
+//   desktop     W / S push / pull, A / D turn, + Space = squeeze firmly (the grip counts as held while a key is down)
 // Hold A or X for 1 s to recentre / reset. Head pose goes to ROS 20 times a second.
-// In VR a guide panel always says what to do next (guidance.js): wait, a six-step walkthrough, start again.
+// Squeezing the grips firmly while pushing turns the walker towards where the head points.
+// In VR a guide panel always says what to do next (guidance.js): wait, a seven-step walkthrough, start again.
 import * as THREE from '../vendor/three.module.js';
 import { connect, rosToThree, threeToRos, rosHeading, makeScene, addWorld, makeWalker, placeWalker,
          HazardTags, Trajectory, TestPatch, TextPanel } from './common.js';
@@ -102,7 +103,7 @@ addWorld(scene).then((n) => { worldCount = n; showStatus(); });
 
 function showStatus(extra = '') {
   status.textContent = `${connected ? 'Connected' : 'Connecting…'} · ${worldCount} objects · ` +
-    `${inVR ? `VR (${vrMode}${boundaryInfo.fallback ? ': boundary too small for walking' : ''})` : (config.assist ? 'desktop (drag to look, W/S push/pull, A/D turn)'
+    `${inVR ? `VR (${vrMode}${boundaryInfo.fallback ? ': boundary too small for walking' : ''})` : (config.assist ? 'desktop (drag to look, W/S push/pull, A/D turn, + Space = squeeze)'
                                                           : 'desktop (drag to look, hold W = hands on, + Space = squeeze)')}` +
     `${flickerOn ? '' : ' · flicker OFF'} ${extra}`;
 }
@@ -277,7 +278,7 @@ function readGrip(t) {
   }
   if (!desktopGripUsed) return null;
   const on = config.assist
-    ? (['KeyW', 'KeyA', 'KeyS', 'KeyD'].some((k) => keys.has(k)) ? 0.4 : 0)
+    ? (['KeyW', 'KeyA', 'KeyS', 'KeyD'].some((k) => keys.has(k)) ? (keys.has('Space') ? 0.9 : 0.4) : 0)
     : (keys.has('KeyW') ? (keys.has('Space') ? 0.9 : 0.4) : 0);
   return { left: on, right: on };
 }
@@ -293,7 +294,10 @@ function nextStep(t) {
   const stuck = steering.grip === 'STOP' && hands;
   if (!stuck) stuckSince = null;
   else if (stuckSince === null) stuckSince = t;
-  if (walkerEnabled) lesson.update({ held: hands && steering.grip !== 'STOP', moving, speed, yaw: pose.yaw, t });
+  if (walkerEnabled) {
+    lesson.update({ held: hands && steering.grip !== 'STOP', moving, speed, yaw: pose.yaw,
+                    headSteering: !!steering.head_steering, t });
+  }
   return guidance({
     connected, recentred: !!anchor, gripState: steering.grip, enabled: walkerEnabled, left: grip.left, right: grip.right,
     mode: vrMode, safetyReason: safety.reason, busy: !!(steering.notice || steering.hint), active,

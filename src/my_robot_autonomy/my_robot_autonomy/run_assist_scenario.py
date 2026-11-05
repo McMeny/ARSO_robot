@@ -5,7 +5,7 @@ measures what the walker does and prints PASS / FAIL.
   terminal 1:  ros2 launch my_robot_bringup walker_assist.launch.xml scenario:=obstacle
   terminal 2:  ros2 run my_robot_autonomy run_assist_scenario registered
 
-Scenarios: open, corridor, tjunction, registered, unregistered, cluttered, deadend, grip_release.
+Scenarios: open, corridor, tjunction, registered, unregistered, cluttered, deadend, grip_release, head_turn.
 (unregistered: launch with eeg_valid:=false.) 12 N on each handle is a 0.4 m/s walk.
 Every scenario also checks: no collisions, the collision monitor never needed, and the walker never
 faster than the push. Log: ~/eye2steering_ws/sessions/scenarios/assist_<name>.json
@@ -60,11 +60,12 @@ class AssistRunner(Runner):
                 'push': list(self.force), 'user_speed': round(st.user_speed, 3) if st else 0.0,
                 'intervention': round(st.intervention, 2) if st else 0.0,
                 'braking': st.braking if st else False, 'nudging': st.nudging if st else False,
+                'head_steering': st.head_steering if st else False,
                 'cmd_v': round(c.linear.x, 3) if c else 0.0, 'cmd_w': round(c.angular.z, 3) if c else 0.0})
 
-    def act(self, seconds, hands=True, push=(0.0, 0.0), until=None):
+    def act(self, seconds, hands=True, push=(0.0, 0.0), until=None, grip=None, head=None):
         self.force = push
-        return self.run(seconds, 'WALK' if hands else 'STOP', None, until)
+        return self.run(seconds, grip or ('WALK' if hands else 'STOP'), head, until)
 
 
 def moved(seg):
@@ -167,6 +168,30 @@ def scenario(r, name, rep):
         c = r.act(4, push=(0.0, 0.0))
         rep.check('hands back on, no push: stays put (never moves on its own)', moved(c) < 0.01, f'moved {moved(c) * 100:.1f} cm')
         return a + b + c
+    if name == 'head_turn':
+        left = yaw0 + math.radians(45)
+        a = r.act(4, push=straight, head=left)
+        rep.check('looking aside, normal grip: keeps going straight', abs(deg(a[-1]['yaw'] - yaw0)) < 5,
+                  f'turned {deg(a[-1]["yaw"] - yaw0):+.1f} deg')
+        b = r.act(6, push=straight, grip='STEER', head=left)
+        turned = deg(b[-1]['yaw'] - yaw0)
+        rep.check('firm squeeze while pushing: turns towards the head', 30 < turned < 50, f'turned {turned:+.0f} deg (head at +45)')
+        rep.check('reported as head steering', any(row['head_steering'] for row in b), '')
+        mid = [row['v'] for row in b if row['head_steering']]
+        rep.check('keeps walking pace while turning', len(mid) > 0 and sum(mid) / len(mid) > 0.2,
+                  f'mean {sum(mid) / max(len(mid), 1):.2f} m/s (push asks 0.40)')
+        c = r.act(3, push=straight, grip='STEER', head=left)
+        rep.check('lined up with the head: stops turning', abs(deg(c[-1]['yaw'] - c[0]['yaw'])) < 5,
+                  f'turned {deg(c[-1]["yaw"] - c[0]["yaw"]):+.1f} deg more')
+        r.act(3, push=(0.0, 0.0))
+        d = r.act(4, push=(0.0, 0.0), grip='STEER', head=wrap(yaw0 - math.pi / 2))
+        rep.check('firm squeeze and head turn, no push: does not move', moved(d) < 0.01 and abs(deg(d[-1]['yaw'] - d[0]['yaw'])) < 1,
+                  f'moved {moved(d) * 100:.1f} cm, turned {deg(d[-1]["yaw"] - d[0]["yaw"]):+.1f} deg')
+        e = r.act(5, push=straight, grip='STEER', head=None)
+        rep.check('head readings stop: no head turn, pushing carries on', moved(e) > 0.5 and not any(row['head_steering'] for row in e[-40:]),
+                  f'moved {moved(e):.2f} m')
+        r.act(2, push=(0.0, 0.0))
+        return a + b + c + d + e
     raise ValueError(f'unknown scenario {name}')
 
 

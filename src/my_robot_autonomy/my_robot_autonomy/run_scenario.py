@@ -27,7 +27,7 @@ from ament_index_python.packages import get_package_share_directory
 from my_robot_autonomy.world_model import load_world
 from walker_interfaces.msg import GripState, HazardArray, SteeringStatus
 
-WORLD_OF = {'registered': 'obstacle', 'unregistered': 'obstacle', 'grip_release': 'open'}
+WORLD_OF = {'registered': 'obstacle', 'unregistered': 'obstacle', 'grip_release': 'open', 'head_turn': 'open'}
 BODY = (-0.04, 0.46, 0.25)        # walker body: x from, x to, half width (base_footprint)
 USER = (-0.79, -0.04, 0.3)        # where the user stands behind it
 

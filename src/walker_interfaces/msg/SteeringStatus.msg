@@ -13,3 +13,4 @@ float32 user_speed        # m/s the user's push asks for
 float32 intervention      # 0 = the push passes untouched ... 1 = the guardian has stopped it
 bool braking              # holding the walker back for something ahead
 bool nudging              # bending the user's path (by holding one wheel back)
+bool head_steering      # the head is turning the walker (firm squeeze, while pushing)

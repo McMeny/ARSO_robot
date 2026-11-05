@@ -66,6 +66,7 @@ input; the walker is the safety net.**
 | Hands on, not pushing | **Stays put.** It never moves on its own. |
 | Pushes both handles | **Rolls forward**: push harder, go faster (up to 0.5 m/s), like a heavy, smooth cart |
 | Pushes one handle harder | **Turns** that way, like a rollator (more on the right turns left) |
+| Looks where they want to go and squeezes firmly while pushing | **Curves towards where the head points**, and stops turning when it lines up. Looking alone does nothing. |
 | Pulls back | **Slows**, or backs up slowly |
 | One forward, one back | **Turns on the spot** (if the turn is clear) |
 
@@ -381,8 +382,8 @@ fails, check the Oz electrode (B1) before continuing.
 
 **B9. Press Start walking** on the operator page.
 
-The headset then guides the participant by itself. A panel says when to wait, then walks them through six steps:
-hold the grips, go forward, stop, turn, back up, full stop. Each step moves on only when they've really done it. After
+The headset then guides the participant by itself. A panel says when to wait, then walks them through seven steps:
+hold the grips, go forward, stop, turn, head turn, back up, full stop. Each step moves on only when they've really done it. After
 that it says how to start moving again whenever they stop (for example **"Press and hold both grip buttons to start
 moving again"**). No Muse is needed for this: leave out `eeg:=muse` to walk with the simulated EEG.
 
@@ -390,6 +391,8 @@ moving again"**). No Muse is needed for this: leave out `eeg:=muse` to walk with
 - **Hold both grip triggers: those are your hands on the handles.** Let go and the walker stops.
 - **Room scale: just walk.** Walk forward and the walker comes with you. Lead with one hand to turn; hold back to
   slow down. (Stationary: the left thumbstick pushes and pulls, the right one turns.)
+- **To turn with your head:** look where you want to go, and squeeze the grip buttons harder while pushing. The walker
+  curves that way. Looking alone does nothing, and a head turn never moves it without a push.
 - **The walker only ever helps.** If you're heading into something, it slows you and bends your path round it
   (the floor lines turn orange first). It never pulls you anywhere.
 - Flickering patches appear on obstacles ahead, and fade if the EEG shows you've seen them. Ones you miss get more
@@ -724,7 +727,7 @@ user has perceived, and the user can't see everything the LiDAR has detected.
 | **Augmentation** | Walking - and pushing the walker - is the primary task, and the user's own push is the only thing that moves it. The machine adds a sense of the scene and steps in only when that sense and the user's path disagree. |
 | **Mediation** | The headset filters what the user sees: registered hazards fade, only missed ones are escalated. EEG is processed locally, and only "registered / not registered" per hazard reaches the motion system. |
 | **Unmonopolizing** | Tags and floor lines are anchored in the scene rather than replacing it. The flicker is subtle and there's nothing to stare at. |
-| **Unrestrictive** | The user can look around and talk: nothing they look at moves the walker. |
+| **Unrestrictive** | The user can look around and talk: nothing they look at moves the walker unless they squeeze firmly while pushing. |
 | **Observable** | Tags show what the LiDAR detected. The floor lines show where the user's push is taking them, and turn orange to show any correction before it happens. |
 | **Controllable** | The user is in charge of every motion: they start it, set its speed and steer it, and letting go stops it. The machine can only hold them back - never push, never move on its own, never turn them more than 35° from their push - and it undoes its correction once clear. |
 | **Attentive** | The machine combines the LiDAR, the user's perception (EEG), and their push and grip. |
