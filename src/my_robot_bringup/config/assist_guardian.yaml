@@ -1,0 +1,52 @@
+# ASSIST + guardian - see my_robot_autonomy/assist_guardian_node.py and guardian_core.py.
+
+assist_guardian:
+  ros__parameters:
+    # ASSIST: handle forces -> motion, a virtual cart (same model and defaults as main's admittance)
+    mass: 25.0                   # kg
+    damping: 40.0                # N s/m  (steady speed = net push past the deadband / damping)
+    yaw_inertia: 4.0
+    yaw_damping: 8.0
+    force_deadband: 4.0          # N per handle - resting hands don't move it
+    handle_y: 0.25               # m, handle to centre (pushing the right one harder turns left)
+    v_max: 0.5                   # m/s forward (backwards at half that)
+    w_max: 0.8                   # rad/s
+    force_timeout: 0.3           # s without force readings -> no push
+    # dead-man grip (from main)
+    release_timeout_s: 0.1       # + grip_state_node's 0.2 s grace = 0.3 s from hands off to locked (as main)
+    # footprint: the walker AND the user behind it
+    footprint_length: 1.25
+    footprint_width: 0.6
+    footprint_offset_x: -0.165
+    safety_margin: 0.12
+    self_filter: true
+    required_free: 0.7           # m an alternative path must be clear for
+    # the guardian
+    half_track: 0.22             # m, wheel to centre
+    horizon_s: 5.0               # the user's path is checked this many seconds ahead...
+    L_min: 2.5                   # ...but at least this far (m)
+    L_max: 3.0
+    brake_registered: 0.3        # m/s^2 it plans to brake at (lower = starts braking sooner)
+    brake_unregistered: 0.15     # a missed / no-EEG hazard: brakes sooner and gentler
+    stop_margin: 0.42            # m short of the safety margin where it aims to stop (front ~0.55 m from a wall)
+    comfort_registered: 2.3      # m of clear path below which it starts bending the path...
+    comfort_unregistered: 2.6    # ...sooner for a missed hazard
+    nudge_registered: 1.0        # how far towards the safer path it bends (0..1) - a registered hazard gets help later, not weaker
+    nudge_unregistered: 1.0
+    min_commit: 0.5              # once it bends, at least this share of the way (a too-gentle start ends in a stop)
+    w_dev: 0.3                   # choosing the safer path: straying from the user's curvature...
+    w_free: 2.0                  # ...a shorter clear path...
+    w_hazard: 1.0                # ...and passing a hazard inside its berth
+    berth_registered: 0.15       # m beside the walker's side
+    berth_unregistered: 0.45
+    caution_scale: 0.5           # speed cap (x v_max) with a missed / no-EEG hazard within caution_radius
+    caution_radius: 2.0
+    spot_turn_curvature: 2.0     # 1/m - a push turning tighter than this counts as turning on the spot
+    better_by: 0.4               # m more room an alternative needs, to be worth bending the path to
+    max_deviation_deg: 35.0      # it never turns the walker further than this from where the push points
+    return_gain: 0.6             # once clear, it undoes its own correction
+    min_push_speed: 0.02
+    blocked_notice_delay_s: 1.0
+    # floor lines
+    edge_half_width: 0.25
+    berth_display_extra: 0.12

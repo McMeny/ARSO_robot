@@ -10,7 +10,12 @@
 //   stationary  the user stands still; the view moves with the walker. The view is never turned
 //               for the user - turning comes only from the user's own body (squeeze to steer
 //               then pivots the walker to match). Optional comfort vignette while moving.
-// The Quest controllers' grip triggers are the handles (sent ~50 Hz -> grip_state_node).
+// The Quest controllers' grip triggers are the handles (sent ~50 Hz -> grip_state_node): hold them to keep
+// the dead-man grip closed. ASSIST (walker_assist.launch.xml): the walker moves only when pushed -
+//   room scale  each hand pulls its handle through a virtual spring: walk ahead of the handles and the
+//               walker comes with you, lead with one hand and it turns, hold back and it slows
+//   stationary  the left thumbstick pushes forward / pulls back, the right one turns
+//   desktop     W / S push / pull, A / D turn (the grip counts as held while a key is down)
 // Hold A or X for 1 s to recentre / reset. Head pose goes to ROS 20 times a second.
 import * as THREE from '../vendor/three.module.js';
 import { connect, rosToThree, threeToRos, rosHeading, makeScene, addWorld, makeWalker, placeWalker,
@@ -36,7 +41,11 @@ const dolly = new THREE.Group();     // places the real (tracked) space in the s
 dolly.add(camera);
 scene.add(dolly);
 const grips = [renderer.xr.getControllerGrip(0), renderer.xr.getControllerGrip(1)];
-grips.forEach((g) => dolly.add(g));
+grips.forEach((g) => {
+  dolly.add(g);
+  g.addEventListener('connected', (e) => { g.userData.hand = e.data.handedness; });
+  g.addEventListener('disconnected', () => { g.userData.hand = null; });
+});
 
 const walker = makeWalker();
 scene.add(walker);
@@ -56,7 +65,8 @@ vignette.renderOrder = 10;
 camera.add(vignette);
 
 let config = { vr_mode: 'room_scale', comfort_vignette: true, user_to_handle_offset: 0.4,
-               boundary_stop_margin: 0.5, max_user_handle_distance: 0.8 };
+               boundary_stop_margin: 0.5, max_user_handle_distance: 0.8,
+               assist: false, spring_n_per_m: 90, max_push_n: 30 };
 let pose = { x: 0, y: 0, yaw: 0 };
 let steering = {};
 let inVR = false, connected = false, flickerOn = true, worldCount = 0;
@@ -79,7 +89,8 @@ addWorld(scene).then((n) => { worldCount = n; showStatus(); });
 
 function showStatus(extra = '') {
   status.textContent = `${connected ? 'Connected' : 'Connecting…'} · ${worldCount} objects · ` +
-    `${inVR ? `VR (${config.vr_mode})` : 'desktop (drag to look, hold W = hands on, + Space = squeeze)'}` +
+    `${inVR ? `VR (${config.vr_mode})` : (config.assist ? 'desktop (drag to look, W/S push/pull, A/D turn)'
+                                                          : 'desktop (drag to look, hold W = hands on, + Space = squeeze)')}` +
     `${flickerOn ? '' : ' · flicker OFF'} ${extra}`;
 }
 
@@ -91,6 +102,12 @@ function headYawLocal() { return new THREE.Euler().setFromQuaternion(camera.quat
 // the handles' midpoint in the sim (three.js world coordinates)
 function simHandles() {
   return rosToThree(pose.x + HANDLE_X * Math.cos(pose.yaw), pose.y + HANDLE_X * Math.sin(pose.yaw), 0);
+}
+
+// one handle in the sim (three.js world): side +1 = left, -1 = right
+function simHandle(side) {
+  const c = Math.cos(pose.yaw), s = Math.sin(pose.yaw);
+  return rosToThree(pose.x + HANDLE_X * c - side * 0.23 * s, pose.y + HANDLE_X * s + side * 0.23 * c, 0);
 }
 
 // the hands' midpoint in the tracking space: the controllers if both are tracked, else in front of the head
@@ -177,8 +194,49 @@ function checkSafety() {
 
 const keys = new Set();
 let desktopGripUsed = false;
-window.addEventListener('keydown', (e) => { keys.add(e.code); if (e.code === 'KeyW') desktopGripUsed = true; });
+window.addEventListener('keydown', (e) => {
+  keys.add(e.code);
+  if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) desktopGripUsed = true;
+});
 window.addEventListener('keyup', (e) => keys.delete(e.code));
+
+// ---------- push (ASSIST) ----------
+
+const clampPush = (f) => Math.max(-config.max_push_n, Math.min(config.max_push_n, f));
+
+function readPush(grip) {
+  if (!config.assist) return null;
+  if (inVR) {
+    const session = renderer.xr.getSession();
+    if (config.vr_mode === 'room_scale') {
+      if (!anchor) return { left: 0, right: 0 };
+      // virtual spring: how far each hand is ahead of its handle, along the walker's forward direction
+      const fwd = new THREE.Vector3(-Math.sin(pose.yaw), 0, -Math.cos(pose.yaw));
+      const f = { left: 0, right: 0 };
+      for (const g of grips) {
+        const hand = g.userData.hand;
+        if (!(hand in f) || grip[hand] < 0.2) continue;
+        const d = g.getWorldPosition(new THREE.Vector3()).sub(simHandle(hand === 'left' ? 1 : -1));
+        f[hand] = clampPush(config.spring_n_per_m * d.dot(fwd));
+      }
+      return f;
+    }
+    // stationary: thumbsticks
+    let forward = 0, turn = 0;
+    for (const source of session ? session.inputSources : []) {
+      const axes = source.gamepad ? source.gamepad.axes : [];
+      if (axes.length < 4) continue;
+      if (source.handedness === 'left') forward = -axes[3];
+      if (source.handedness === 'right') turn = axes[2];
+    }
+    const push = forward >= 0 ? forward * 24 : forward * 16;
+    return { left: clampPush(push + turn * 12), right: clampPush(push - turn * 12) };
+  }
+  if (!desktopGripUsed) return null;
+  const push = keys.has('KeyW') ? 20 : keys.has('KeyS') ? -14 : 0;
+  const turn = keys.has('KeyA') ? -8 : keys.has('KeyD') ? 8 : 0;     // A: right handle harder -> left
+  return { left: push + turn, right: push - turn };
+}
 
 let resetHeldSince = null;
 function readGrip(t) {
@@ -199,7 +257,9 @@ function readGrip(t) {
     return g;
   }
   if (!desktopGripUsed) return null;
-  const on = keys.has('KeyW') ? (keys.has('Space') ? 0.9 : 0.4) : 0;
+  const on = config.assist
+    ? (['KeyW', 'KeyA', 'KeyS', 'KeyD'].some((k) => keys.has(k)) ? 0.4 : 0)
+    : (keys.has('KeyW') ? (keys.has('Space') ? 0.9 : 0.4) : 0);
   return { left: on, right: on };
 }
 
@@ -304,6 +364,8 @@ renderer.setAnimationLoop((time) => {
     lastGripSend = t;
     const g = readGrip(t);
     if (g) link.send({ type: 'grip', left: g.left, right: g.right });
+    const f = readPush(g || { left: 0, right: 0 });
+    if (f) link.send({ type: 'handle_force', left: f.left, right: f.right });
   }
   if (t - lastSafety > 0.1) { lastSafety = t; checkSafety(); }
   if (t - lastHeadSend > 0.05) {
@@ -319,6 +381,7 @@ renderer.setAnimationLoop((time) => {
     fpsTime = t;
     link.send({ type: 'headset_status', mode: inVR ? `vr_${config.vr_mode}` : 'desktop', fps: Math.round(fps),
                 guardian: !!bounds });
-    showStatus(`· ${Math.round(fps)} fps${steering.grip ? ` · grip ${steering.grip}` : ''}`);
+    showStatus(`· ${Math.round(fps)} fps${steering.grip ? ` · grip ${steering.grip}` : ''}` +
+               `${config.assist && steering.intervention > 0.05 ? ` · walker helping ${Math.round(100 * steering.intervention)}%` : ''}`);
   }
 });

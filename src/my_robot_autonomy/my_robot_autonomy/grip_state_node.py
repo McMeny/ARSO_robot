@@ -7,6 +7,8 @@ Sources (parameter `source`):
             (or the headset page's keys in desktop mode, which also go to /walker/grip_raw).
   arduino   a serial line "left,right\\n" from the Arduino's two FSRs (raw ADC counts). The
             Arduino stops the motors itself in firmware; this node mirrors that state for ROS.
+            With four values, "grip_left,grip_right,force_left,force_right\\n", the last two are the
+            handle load cells in newtons, published on /walker/handle_force (ASSIST).
   operator  no handles: WALK while the operator page says Start walking (no STEER). The old
             "both hands always on the walker" mode.
 
@@ -26,7 +28,7 @@ from std_msgs.msg import Bool
 from std_srvs.srv import Trigger
 
 from my_robot_autonomy.grip_logic import GripLogic, NAMES, STOP, WALK
-from walker_interfaces.msg import GripState
+from walker_interfaces.msg import GripState, HandleForce
 
 
 class GripStateNode(Node):
@@ -55,6 +57,7 @@ class GripStateNode(Node):
 
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.pub = self.create_publisher(GripState, 'walker/grip_state', 10)
+        self.force_pub = self.create_publisher(HandleForce, 'walker/handle_force', 10)
         if self.source == 'quest':
             self.create_subscription(GripState, 'walker/grip_raw', self.on_raw, 10)
         elif self.source == 'keyboard':
@@ -109,11 +112,19 @@ class GripStateNode(Node):
         *lines, self.serial_buffer = self.serial_buffer.split(b'\n')
         for line in lines[-1:]:
             try:
-                l, r = (float(v) for v in line.decode().strip().split(','))
+                values = [float(v) for v in line.decode().strip().split(',')]
             except ValueError:
                 continue
+            if len(values) not in (2, 4):
+                continue
+            l, r = values[:2]
             self.left, self.right = min(l / self.adc_max, 1.0), min(r / self.adc_max, 1.0)
             self.raw_time = self.now()
+            if len(values) == 4:
+                f = HandleForce()
+                f.header.stamp = self.get_clock().now().to_msg()
+                f.left, f.right = values[2], values[3]
+                self.force_pub.publish(f)
 
     # ---------- calibration ----------
 

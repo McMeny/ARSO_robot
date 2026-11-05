@@ -14,6 +14,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Tentacles.msg"
   "msg/GripState.msg"
   "msg/SteeringStatus.msg"
+  "msg/HandleForce.msg"
   DEPENDENCIES std_msgs geometry_msgs
 )
 

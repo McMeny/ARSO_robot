@@ -1,0 +1,162 @@
+<launch>
+    <!-- ASSIST + guardian: the user moves the walker by pushing the handles (ASSIST, from main), and the
+         guardian - the tentacle machinery and the EEG hazard loop - protects them: it brakes, and bends
+         their path by holding a wheel back, but never pushes and never moves the walker on its own.
+         Let go of the handles (dead-man) and it stops. No SLAM, no Nav2 planner.
+         Command chain:
+           handle forces -> assist_guardian -> cmd_vel_guardian -> velocity_smoother -> cmd_vel_smoothed
+             -> twist_mux (teleop on cmd_vel_joy wins) -> cmd_vel_mux -> collision_monitor -> cmd_vel_out (robot)
+         walker_tentacle.launch.xml (the robot drives itself) and the Nav2 / SLAM launch files are untouched. -->
+
+    <!-- scenario:=store (the shopping store) or open | corridor | tjunction | obstacle | cluttered | deadend -->
+    <arg name = "scenario" default = "store" />
+    <!-- vr:=true adds the headset web server; the walker then also waits for Start walking on the operator page -->
+    <arg name = "vr" default = "false" />
+    <!-- vr_mode:=room_scale (walk in a cleared room) or stationary (stand still, the view moves with the walker) -->
+    <arg name = "vr_mode" default = "room_scale" />
+    <arg name = "comfort_vignette" default = "true" />
+    <!-- grip:= quest (controller grip triggers = hands on the handles; the push comes from the headset)
+               | keyboard (walker_keys: grip and push) | arduino (grip FSRs + handle load cells) -->
+    <arg name = "grip" default = "$(eval '\'quest\' if \'$(var vr)\' == \'true\' else \'keyboard\'')" />
+    <!-- eeg:= model | toggle (ssvep_emulator: verdicts only) | emulator (simulated raw EEG + the real decoder) | muse (real Muse over LSL) -->
+    <arg name = "eeg" default = "model" />
+    <arg name = "p_detect" default = "0.8" />
+    <arg name = "eeg_valid" default = "true" />
+    <arg name = "rviz" default = "true" />
+    <arg name = "gazebo_view" default = "false" />
+    <arg name = "log" default = "$(var vr)" />
+
+    <let name = "urdf_path" value = "$(find-pkg-share my_robot_description)/urdf/my_robot.urdf.xacro" />
+    <let name = "world_path" value = "$(eval '\'$(find-pkg-share my_robot_bringup)/worlds/my_world.sdf\' if \'$(var scenario)\' == \'store\' else \'$(find-pkg-share my_robot_bringup)/worlds/scenarios/$(var scenario).sdf\'')" />
+    <let name = "config" value = "$(find-pkg-share my_robot_bringup)/config" />
+    <!-- without VR the walker may move as soon as the grip says so; with VR the operator starts it too -->
+    <let name = "start_enabled" value = "$(eval '\'false\' if \'$(var vr)\' == \'true\' else \'true\'')" />
+
+    <!-- 1. Gazebo, no window (LIBGL settings kept inside the group, away from RViz) -->
+    <group>
+        <set_env name = "LIBGL_ALWAYS_SOFTWARE" value = "1" />
+        <set_env name = "IGN_GAZEBO_RESOURCE_PATH"
+            value = "$(find-pkg-prefix my_robot_description)/share:$(env IGN_GAZEBO_RESOURCE_PATH '')" />
+        <include file = "$(find-pkg-share ros_gz_sim)/launch/gz_sim.launch.py">
+            <arg name = "gz_args" value = "-s -r $(var world_path)" />
+        </include>
+    </group>
+    <group if = "$(var gazebo_view)">
+        <set_env name = "LIBGL_ALWAYS_SOFTWARE" value = "1" />
+        <set_env name = "IGN_GAZEBO_RESOURCE_PATH"
+            value = "$(find-pkg-prefix my_robot_description)/share:$(env IGN_GAZEBO_RESOURCE_PATH '')" />
+        <executable cmd = "ign gazebo -g --render-engine ogre2" output = "screen" />
+    </group>
+
+    <!-- 2. Robot description, spawn, Gazebo <-> ROS bridge, EKF (odom -> base_footprint) -->
+    <node pkg = "robot_state_publisher" exec = "robot_state_publisher">
+        <param name = "robot_description" value = "$(command 'xacro $(var urdf_path)')" />
+        <param name = "use_sim_time" value = "true" />
+    </node>
+    <node pkg = "ros_gz_sim" exec = "create" output = "screen" args = "-topic robot_description -name my_robot -z 0.02" />
+    <node pkg = "ros_gz_bridge" exec = "parameter_bridge" output = "screen"
+        args = "/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock
+                /cmd_vel_out@geometry_msgs/msg/Twist]ignition.msgs.Twist
+                /odom@nav_msgs/msg/Odometry[ignition.msgs.Odometry
+                /scan@sensor_msgs/msg/LaserScan[ignition.msgs.LaserScan
+                /tf@tf2_msgs/msg/TFMessage[ignition.msgs.Pose_V
+                /joint_states@sensor_msgs/msg/JointState[ignition.msgs.Model
+                /imu@sensor_msgs/msg/Imu[ignition.msgs.IMU
+                /camera/image_raw@sensor_msgs/msg/Image[ignition.msgs.Image
+                /camera/camera_info@sensor_msgs/msg/CameraInfo[ignition.msgs.CameraInfo" />
+    <node pkg = "robot_localization" exec = "ekf_node" name = "ekf_filter_node" output = "screen">
+        <param from = "$(var config)/ekf.yaml" />
+        <param name = "use_sim_time" value = "true" />
+    </node>
+    <!-- no map: map is fixed to odom, so the headset and hazards (which use map) line up with odom -->
+    <node pkg = "tf2_ros" exec = "static_transform_publisher" name = "map_to_odom"
+        args = "--frame-id map --child-frame-id odom" />
+
+    <!-- 3. Grip state -->
+    <node pkg = "my_robot_autonomy" exec = "grip_state_node" name = "grip_state" output = "screen">
+        <param from = "$(var config)/grip.yaml" />
+        <param name = "source" value = "$(var grip)" />
+        <param name = "start_enabled" value = "$(var start_enabled)" />
+        <param name = "use_sim_time" value = "true" />
+    </node>
+
+    <!-- 4. Hazards and the EEG -->
+    <node pkg = "my_robot_autonomy" exec = "hazard_tracker" output = "screen">
+        <param from = "$(var config)/hazards.yaml" />
+        <param name = "world_file" value = "$(var world_path)" />
+        <param name = "use_sim_time" value = "true" />
+    </node>
+    <group if = "$(eval '\'$(var eeg)\' in (\'model\', \'toggle\')')">
+        <node pkg = "my_robot_autonomy" exec = "ssvep_emulator" output = "screen">
+            <param name = "mode" value = "$(var eeg)" />
+            <param name = "p_detect" value = "$(var p_detect)" />
+            <param name = "eeg_valid" value = "$(var eeg_valid)" />
+            <param name = "use_sim_time" value = "true" />
+        </node>
+    </group>
+    <group if = "$(eval '\'$(var eeg)\' in (\'emulator\', \'muse\')')">
+        <node pkg = "my_robot_autonomy" exec = "eeg_decoder" output = "screen">
+            <param from = "$(var config)/eeg.yaml" />
+            <param name = "use_sim_time" value = "true" />
+        </node>
+    </group>
+    <group if = "$(eval '\'$(var eeg)\' == \'emulator\'')">
+        <node pkg = "my_robot_autonomy" exec = "muse_emulator" output = "screen">
+            <param from = "$(var config)/eeg.yaml" />
+            <param name = "detect_prob" value = "$(var p_detect)" />
+            <param name = "use_sim_time" value = "true" />
+        </node>
+    </group>
+
+    <!-- 5. ASSIST + guardian -> velocity smoother -> twist_mux -> collision monitor -->
+    <node pkg = "my_robot_autonomy" exec = "assist_guardian_node" name = "assist_guardian" output = "screen">
+        <param from = "$(var config)/assist_guardian.yaml" />
+        <param name = "use_sim_time" value = "true" />
+    </node>
+    <node pkg = "nav2_velocity_smoother" exec = "velocity_smoother" name = "velocity_smoother" output = "screen">
+        <param from = "$(var config)/velocity_smoother.yaml" />
+        <remap from = "cmd_vel" to = "cmd_vel_guardian" />
+    </node>
+    <node pkg = "twist_mux" exec = "twist_mux" output = "screen">
+        <param from = "$(var config)/twist_mux_tentacle.yaml" />
+        <param name = "use_sim_time" value = "true" />
+        <remap from = "cmd_vel_out" to = "cmd_vel_mux" />
+    </node>
+    <node pkg = "nav2_collision_monitor" exec = "collision_monitor" name = "collision_monitor" output = "screen">
+        <param from = "$(var config)/collision_monitor.yaml" />
+    </node>
+    <node pkg = "nav2_lifecycle_manager" exec = "lifecycle_manager" name = "lifecycle_manager_walker" output = "screen">
+        <param name = "use_sim_time" value = "true" />
+        <param name = "autostart" value = "true" />
+        <param name = "node_names" value = "['velocity_smoother', 'collision_monitor']" />
+    </node>
+
+    <!-- 6. RViz (fixed frame odom) -->
+    <group if = "$(var rviz)">
+        <node pkg = "rviz2" exec = "rviz2" output = "screen"
+            args = "-d $(find-pkg-share my_robot_bringup)/rviz/walker_assist.rviz">
+            <param name = "use_sim_time" value = "true" />
+        </node>
+        <node pkg = "my_robot_autonomy" exec = "world_markers" output = "screen">
+            <param name = "world_file" value = "$(var world_path)" />
+            <param name = "use_sim_time" value = "true" />
+        </node>
+    </group>
+
+    <!-- 7. Headset bridge (vr:=true) and session logging -->
+    <group if = "$(var vr)">
+        <node pkg = "walker_vr" exec = "web_server" output = "screen">
+            <param name = "world_file" value = "$(var world_path)" />
+            <param name = "start_enabled" value = "false" />
+            <param name = "vr_mode" value = "$(var vr_mode)" />
+            <param name = "comfort_vignette" value = "$(var comfort_vignette)" />
+            <param name = "assist" value = "true" />
+            <param name = "use_sim_time" value = "true" />
+        </node>
+    </group>
+    <group if = "$(var log)">
+        <node pkg = "my_robot_autonomy" exec = "session_logger" output = "screen">
+            <param name = "use_sim_time" value = "true" />
+        </node>
+    </group>
+</launch>

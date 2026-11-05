@@ -34,6 +34,8 @@ setup(
             'ssvep_emulator = my_robot_autonomy.ssvep_emulator:main',
             'walker_keys = my_robot_autonomy.walker_keys:main',
             'run_scenario = my_robot_autonomy.run_scenario:main',
+            'assist_guardian_node = my_robot_autonomy.assist_guardian_node:main',
+            'run_assist_scenario = my_robot_autonomy.run_assist_scenario:main',
         ],
     },
 )

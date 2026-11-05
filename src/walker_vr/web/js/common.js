@@ -211,10 +211,16 @@ export class Trajectory {
       new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
     this.edges = new THREE.Mesh(new THREE.BufferGeometry(),
       new THREE.MeshBasicMaterial({ color: 0x40e0ff, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
-    scene.add(this.centre, this.edges);
+    // ASSIST: where the user's own push is taking them (thin, white); the lines above are where the
+    // walker will actually go, orange when the guardian is correcting it
+    this.intended = new THREE.Mesh(new THREE.BufferGeometry(),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false }));
+    scene.add(this.centre, this.edges, this.intended);
   }
 
   update(t) {
+    this.intended.geometry.dispose();
+    this.intended.geometry = ribbon(t.intended && t.corrected ? t.intended : [], 0.018);
     if (!t.centre || t.centre.length < 2) return;
     const mode = t.mode || 'drive';
     this.centre.geometry.dispose();
@@ -230,7 +236,7 @@ export class Trajectory {
     const solid = 0.3 + 0.5 * (t.machine_authority ?? 1);   // more solid as the machine takes over
     const widened = t.widened || t.extra_clearance > 0;
     this.edges.material.opacity = Math.min(1, solid + (widened ? 0.3 : 0));
-    this.edges.material.color.set(widened ? 0xffb050 : 0x40e0ff);
+    this.edges.material.color.set(t.corrected ? 0xff8a30 : widened ? 0xffb050 : 0x40e0ff);
     if (mode === 'blocked') {
       this.centre.material.color.set(0xffb000);
       this.centre.material.opacity = 0.85;

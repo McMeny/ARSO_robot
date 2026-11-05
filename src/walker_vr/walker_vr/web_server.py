@@ -15,6 +15,7 @@ ROS -> browsers: config (vr_mode etc.), walker_pose (30 Hz), hazards, trajectory
                  (/walker/steering_status: grip, authority, hint, notice...), walker_status,
                  eeg_status, test_stimulus, head_pose (for the spectator), command (e.g. recentre)
 browsers -> ROS: head_pose -> /head_pose, grip -> /walker/grip_raw (the Quest's grip triggers),
+                 handle_force -> /walker/handle_force (the push: virtual spring or thumbsticks),
                  safety -> /walker/force_stop (room edge, user too far from the handles),
                  headset_status -> /headset_status, walker_enabled -> /walker_enabled,
                  flicker_enabled -> /flicker_enabled, command -> /operator_command
@@ -39,7 +40,7 @@ from std_msgs.msg import Bool, String
 from tf2_ros import Buffer, TransformListener, TransformException
 
 from my_robot_autonomy.world_model import load_world
-from walker_interfaces.msg import GripState, HazardArray, SteeringStatus, WalkerTrajectory
+from walker_interfaces.msg import GripState, HandleForce, HazardArray, SteeringStatus, WalkerTrajectory
 
 CERT_DIR = os.path.expanduser('~/.walker_vr')
 STATE_NAMES = ['waiting', 'probing', 'registered', 'missed', 'passed']
@@ -63,8 +64,11 @@ class Bridge(Node):
             'user_to_handle_offset': p('user_to_handle_offset', 0.4).value,  # m, hands in front of the head
             'boundary_stop_margin': p('boundary_stop_margin', 0.5).value,    # m from the Guardian edge -> STOP
             'max_user_handle_distance': p('max_user_handle_distance', 0.8).value,  # m head to handles -> STOP
+            'assist': p('assist', False).value,                              # the user pushes the walker
+            'spring_n_per_m': p('spring_n_per_m', 90.0).value,               # room scale: hands ahead of the handles -> push
+            'max_push_n': p('max_push_n', 30.0).value,                       # N per handle
         }
-        self.edges = {'left': [], 'right': []}
+        self.edges = {'left': [], 'right': [], 'intended': []}
         self.steering = {}
 
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
@@ -74,6 +78,8 @@ class Bridge(Node):
         self.flicker_pub = self.create_publisher(Bool, 'flicker_enabled', latched)
         self.command_pub = self.create_publisher(String, 'operator_command', 10)
         self.grip_pub = self.create_publisher(GripState, 'walker/grip_raw', 10)
+        self.force_pub = self.create_publisher(HandleForce, 'walker/handle_force', 10)
+        self.create_subscription(Path, 'walker/intended_path', lambda m: self.on_edge('intended', m), 10)
         self.force_stop_pub = self.create_publisher(Bool, 'walker/force_stop', 10)
         self.create_subscription(Path, 'walker/trajectory', self.on_path, 10)
         self.create_subscription(Path, 'walker/trajectory_left', lambda m: self.on_edge('left', m), 10)
@@ -142,13 +148,16 @@ class Bridge(Node):
         st = self.steering
         mode = 'pivot' if st.get('turning_in_place') else 'blocked' if st.get('blocked') else 'drive'
         self.send('trajectory', {'centre': self.to_map(msg), 'left': self.edges['left'], 'right': self.edges['right'],
+                                 'intended': self.edges['intended'],
+                                 'corrected': bool(st.get('braking')) or bool(st.get('nudging')),
                                  'mode': mode, 'widened': bool(st.get('caution')) and bool(self.edges['left']),
                                  'extra_clearance': 0.0, 'machine_authority': 1.0 - st.get('authority', 0.0)})
 
     def on_steering(self, msg):
         self.steering = {'grip': ['STOP', 'WALK', 'STEER'][min(msg.grip_state, 2)], 'authority': round(msg.authority, 2),
                          'turning_in_place': msg.turning_in_place, 'blocked': msg.blocked, 'caution': msg.caution,
-                         'hint': msg.hint, 'notice': msg.notice}
+                         'hint': msg.hint, 'notice': msg.notice, 'user_speed': round(msg.user_speed, 2),
+                         'intervention': round(msg.intervention, 2), 'braking': msg.braking, 'nudging': msg.nudging}
         self.send('steering', self.steering)
 
     def on_trajectory(self, msg):
@@ -176,6 +185,11 @@ class Bridge(Node):
             g.header.stamp = self.get_clock().now().to_msg()
             g.left, g.right = float(data['left']), float(data['right'])
             self.grip_pub.publish(g)
+        elif kind == 'handle_force':
+            f = HandleForce()
+            f.header.stamp = self.get_clock().now().to_msg()
+            f.left, f.right = float(data['left']), float(data['right'])
+            self.force_pub.publish(f)
         elif kind == 'safety':
             self.force_stop_pub.publish(Bool(data=bool(data['stop'])))
             self.send('safety', data)

@@ -1,18 +1,21 @@
 # Eye to Steering: a Humanistic-Intelligence Smart Walker
 
-An assistive robotic walker that uses the **human visual system as a second sensor** alongside its LiDAR, and the
-user's **head direction** to learn where they want to go. The human stays in the walker's feedback loop the whole
-time. The walker adjusts how it handles each hazard depending on whether the user appears to have seen it, and the
-balance of steering control between human and machine shifts with the level of risk.
+An assistive robotic walker that **the user drives, and the walker protects**. The user pushes the handles and the
+walker moves with them, like a power-assisted rollator. It uses the **human visual system as a second sensor**
+alongside its LiDAR: an EEG measure tells it whether the user has seen each hazard, and it steps in - braking, or
+bending the user's path round an obstacle - earlier and more firmly for the hazards they missed. It never moves on
+its own and never pushes the user anywhere.
 
 This repository is the **VR evaluation build**: the walker, the store and the hazards are simulated (ROS 2 + Gazebo),
 the user experiences them in a **Meta Quest 3** in full VR, and a **Muse EEG headband with an Oz electrode** reads
 their visual response. The aim is to evaluate the concept before any hardware is funded.
 
-> **Branch `tentacle-only-driving`:** this version has **no Nav2 planner and no SLAM**. A single reactive
-> **tentacle planner** drives the walker, and the user **squeezes the handles to steer** - see
-> [How it drives](#how-it-drives-the-tentacle-planner). Launch file: `walker_tentacle.launch.xml`.
-> The Nav2 version is on `MENY_MANUAL_EXTENDED`.
+> **Branch `assist-guardian`** combines the best of two branches: **ASSIST** and the **dead-man grip** from `main`
+> (the walker moves only when pushed), and the **tentacle machinery and EEG hazard loop** from
+> `tentacle-only-driving` (which now *protect* the user's own path instead of driving). No Nav2 planner, no SLAM.
+> Launch file: `walker_assist.launch.xml`. See [How it moves](#how-it-moves-assist-and-the-guardian).
+> The other branches are unchanged: `main`, `tentacle-only-driving` (the walker drives itself, squeeze to steer),
+> `MENY_MANUAL_EXTENDED` (Nav2).
 
 > **Status: built and tested in simulation** (with the emulated Muse and a simulated headset). Not yet tried with a
 > real Quest 3 and Muse - see [Status](#status).
@@ -28,7 +31,7 @@ their visual response. The aim is to evaluate the concept before any hardware is
 4. [The VR evaluation build](#the-vr-evaluation-build)
 5. [**READ HERE: SETUP AND USE INSTRUCTIONS FOR VR (QUEST 3 AND MUSE)**](#read-here-setup-and-use-instructions-for-vr-quest-3-and-muse)
 6. [Trying it without a headset or Muse (testing only)](#trying-it-without-a-headset-or-muse-testing-only)
-7. [Tentacle planner reference: topics, parameters, scenarios](#tentacle-planner-reference-topics-parameters-scenarios)
+7. [ASSIST + guardian reference: topics, parameters, scenarios](#assist--guardian-reference-topics-parameters-scenarios)
 8. [Operator controls](#operator-controls)
 9. [Settings you might change](#settings-you-might-change)
 10. [Troubleshooting](#troubleshooting)
@@ -54,18 +57,22 @@ user has registered each hazard, and the walker changes how it behaves according
 
 ## How it works
 
-The walker drives forward at a slow walking pace through an unfamiliar environment, while the user walks with it,
-holding both handles. **The grip decides whether it moves at all**:
+The user walks through an unfamiliar environment pushing the walker, holding both handles. **They are the motor's
+input; the walker is the safety net.**
 
-| Grip | State | What the walker does |
-|---|---|---|
-| Either hand off (for more than 0.2 s) | **STOP** | Stops and holds. Nothing else can make it move. |
-| Both hands holding | **WALK** | Drives on the way it is going: straight unless an obstacle forces a curve. It never turns more than 45° on its own, so at a junction or a dead end it stops and waits for the user. |
-| Both hands squeezing firmly (for 0.5 s) | **STEER** | **Squeeze to steer**: it heads where the user's head points, turning on the spot if the head is turned far round. |
+| User | What the walker does |
+|---|---|
+| Hands off the handles (for more than 0.3 s) | **Stops and holds** (dead-man grip). Nothing can make it move. |
+| Hands on, not pushing | **Stays put.** It never moves on its own. |
+| Pushes both handles | **Rolls forward**: push harder, go faster (up to 0.5 m/s), like a heavy, smooth cart |
+| Pushes one handle harder | **Turns** that way, like a rollator (more on the right turns left) |
+| Pulls back | **Slows**, or backs up slowly |
+| One forward, one back | **Turns on the spot** (if the turn is clear) |
 
-A sudden squeeze shorter than 0.5 s (a startle) is ignored. On the real walker the handles have force sensors (FSRs)
-read by an Arduino, which also stops the motors itself in firmware. In VR, the Quest controllers' **grip triggers**
-stand in for them.
+Resting hands don't move it (a 4 N deadband per handle). On the real walker the handles have load cells and a grip
+sensor, read by an Arduino that also stops the motors in firmware. In VR the Quest controllers stand in: holding the
+**grip triggers** is the hand on the handle, and the push comes from **where your hands are** (room scale: a virtual
+spring between each hand and its handle) or the **thumbsticks** (stationary).
 
 ### The hazard loop
 
@@ -86,84 +93,65 @@ made by about **2.5 m**. Only then, if the hazard still isn't registered, does t
 this gives about 5 s, which is room for 2–3 EEG decoding windows. A hazard that appears closer than 4 m (for
 example, from behind a shelf) is probed straight away, and defaults to cautious if there isn't time to decide.
 
-### How it drives (the tentacle planner)
-
-There's no map and no route planner. A single reactive **tentacle planner** (after von Hundelshausen et al., 2008,
-*Driving with Tentacles*) runs 20 times a second:
-
-1. **31 tentacles**, constant-curvature arcs from hard left (radius 0.67 m) through straight to hard right, 2.5 m
-   long, **plus 20 lane-change tentacles**: S-shapes that curve one way then back, ending parallel to where they
-   started but shifted sideways. Those let it step round an obstacle and carry on, which matters because the walker
-   with the user behind it is 1.25 m long and has to pass things nearly parallel.
-2. Each one is checked by **sweeping a footprint that covers the walker *and* the user behind it** (1.25 × 0.6 m,
-   plus a 12 cm safety margin) along it against the LiDAR. It counts as valid if it stays clear for at least 0.7 m,
-   enough to stop. Moving away from something that's already close is always allowed.
-3. Among the valid ones it picks the lowest cost:
-   ```
-   cost = clearance (keep away from things)  +  clear length (prefer open ways)
-        + head direction x authority (STEER only)  +  hazard berths
-        + hysteresis (stay on the previous arc: no jitter)  +  curvature (prefer straight)
-        + WALK only: back to the heading WALK started with (after going round something)
-   ```
-4. **Speed** = 0.4 m/s × (room ahead) × (0.5 if an unregistered or no-EEG hazard is within 2 m ahead), with smooth
-   acceleration.
-5. **Blocked** (no valid tentacle): it stops, and after 1 s the headset shows **"Path blocked. Squeeze to steer
-   out"**. Squeezing and turning the head turns it on the spot (if the turn is clear) and drives it out.
-
-After the planner the command goes through the Nav2 **velocity smoother** and then the Nav2 **collision monitor**,
-an independent safety layer that stops or slows the walker by itself if anything gets inside its zones. The planner
-keeps further away than those zones, so in normal driving the collision monitor never has to act.
+### How it moves: ASSIST and the guardian
 
 ```
-tentacle_planner ─► velocity_smoother ─► twist_mux (teleop wins) ─► collision_monitor ─► walker
+your push (handle forces) ─► ASSIST (a virtual cart, from main) ─► where you're heading
+                                                                         │
+           guardian: checks YOUR path - the walker and you swept along it - against the LiDAR
+                                                                         │
+                clear ──► passes through untouched (the walker is invisible)
+                something ahead ──► brakes, and/or bends your path round it
+                                                                         │
+                     velocity smoother ─► twist_mux ─► collision monitor (independent) ─► wheels
 ```
 
-**What it can't do:** plan a route round a whole shelf to reach somewhere specific. It reacts to what's in front, and
-the user chooses directions at junctions by squeezing to steer.
+**The guardian's rules:**
+- **It never pushes.** Neither wheel ever goes faster than your push makes it. It can only *hold the walker back*:
+  braking both wheels slows you, braking one more than the other bends your path. (Checked every tick in every
+  test.)
+- **It never moves on its own.** No push, no motion.
+- **It never takes you somewhere else.** It bends your path at most 35° away from where you're pushing, and once
+  you're past the obstacle it undoes its own correction. A junction or a dead end is your decision: it brakes and
+  waits for you to turn.
+- **The EEG sets how early and firmly it helps.** A hazard you registered gets late, light help. One you missed
+  (or no reliable EEG) gets help sooner and firmer, a wider berth (0.45 m instead of 0.15 m) and a speed cap of
+  half pace.
+
+**How it finds a safer path:** the tentacle fan from `tentacle-only-driving` - 31 arcs and 20 lane-change S-curves -
+each checked by sweeping the walker-and-user footprint (1.25 × 0.6 m plus 12 cm) along it. It picks the clear one
+closest to what you're doing, and bends towards it as far as the risk and the EEG say. Its brake planning aims to
+stop with its front about 55 cm from an obstacle, braking at 0.3 m/s² (0.15 m/s² for a missed hazard, so it starts sooner).
 
 ### The trajectory display
 
-The headset draws the walker's short-term path on the floor as faint, steady lines (no flicker, no animation): a
-**centre line and two edge lines** marking the walker's width over the next **2 seconds**.
-- The edges **widen and brighten** (orange) where the walker gives an unregistered hazard a wider berth.
-- The edges become **more solid** as the machine takes more control.
-- **Turning on the spot:** the lines show the walker's outline where the turn will end.
-- **Blocked:** a short **amber** outline just in front of the walker.
+The headset draws the walker's short-term path on the floor as faint, steady lines (no flicker, no animation),
+marking its width over the next **2 seconds**:
+- **Cyan lines: where your push is taking you.** When the guardian isn't doing anything, that's all you see.
+- **When it steps in, the lines turn orange** and show where the walker will *actually* go - bent round the
+  obstacle, or stopping short of it - and a thin **white line** shows where your push alone would have gone.
+- The edges **widen** round a hazard you didn't register (a wider berth).
+- **Turning on the spot:** the walker's outline where the turn will end. **Blocked:** a short amber outline in front.
 
-### Head-guided direction (squeeze to steer)
+### Where the head comes in
 
-The head only steers in **STEER** (both handles squeezed firmly). In WALK the walker ignores the head, so looking
-around never moves it. In STEER, steering authority is **shared according to risk**, measured as clearance: the
-distance from the walker-and-user footprint to the nearest obstacle.
-
-| Clearance around the walker | Who steers (STEER) |
-|---|---|
-| **0.8 m or more** | The user's head fully: the walker picks the clear tentacle that ends up facing where they look |
-| **Between** | The head's influence fades as clearance shrinks |
-| **0.15 m or less** | The machine fully. The head can't steer it into anything: only clear tentacles can ever be chosen |
-
-- Head turned more than 60° away (or 20° while blocked): the walker slows to a stop and **turns on the spot** to
-  match, if the turning footprint is clear, and stops turning within 10° of the head direction.
-- Head direction is low-pass filtered (0.6 s), and looks towards a tagged hazard are ignored: those are the hazard
-  probe at work, not a choice of direction.
-- **Hint:** if the user keeps looking more than 30° away from where the walker is going for 3 s in WALK (and no
-  hazard is in caution), the headset shows "Turn left? Squeeze to steer" (or right, or "Turn around?"). At most once
-  every 30 s, and no more after 3 successful steers.
+The head doesn't steer: your push does. The headset still tracks the head, for the hazard loop (which tags are in
+view) and for the session log.
 
 ### Speed: the lowest limit always wins
 
 ```
-actual speed = lowest of ( grip ,  planner (room ahead, hazard caution) ,  velocity smoother ,  collision monitor )
+actual speed = lowest of ( your push ,  guardian (room ahead, hazard caution) ,  velocity smoother ,  collision monitor )
 ```
 
-| Grip | Hazard nearby? | EEG result | Result |
+| Your push | Hazard nearby? | EEG result | Result |
 |---|---|---|---|
-| WALK / STEER | none | – | normal pace, 0.4 m/s |
-| WALK / STEER | yes | registered | normal pace, normal berth (0.15 m) |
-| WALK / STEER | yes | not registered, or no reliable EEG | half pace, wider berth (0.45 m), stronger cue |
-| STOP | – | – | stop and hold |
+| any | none | – | exactly your push |
+| any | yes | registered | your push; a light, late correction only if you're heading into it |
+| any | yes | not registered, or no reliable EEG | at most half pace near it, a wider berth, help sooner and firmer, stronger tag |
+| hands off | – | – | stop and hold |
 
-The EEG result can only lower the speed and widen the berth. It never chooses a direction or starts motion.
+The EEG result can only hold you back more. It never chooses a direction or starts motion.
 
 ---
 
@@ -171,16 +159,16 @@ The EEG result can only lower the speed and widen the berth. It never chooses a 
 
 These hold in every mode, and nothing in the software can switch them off.
 
-1. **The EEG never commands motion.** It only changes speed scaling and the hazard berth.
-2. **No motion unless the grip is WALK or STEER.** STOP means zero and hold. No grip readings, no LiDAR, or the
-   operator's Stop walking also mean STOP.
-3. **The collision monitor is an independent safety layer**, last in the command chain, after the planner and the
-   velocity smoother. The planner is never the only thing preventing a collision.
-4. **The head only steers in STEER**, and its weight drops as clearance drops.
+1. **The walker never moves on its own.** Only the user's push moves it; no push, no motion.
+2. **Dead-man grip:** hands off for 0.3 s and it locks at zero. No grip readings, no LiDAR, or the operator's Stop
+   walking also lock it.
+3. **The guardian never pushes:** neither wheel is ever faster than the user's push. It only brakes, and bends the
+   path by braking one side more, at most 35° from where the user pushes.
+4. **The EEG never commands motion.** It only changes how early and how firmly the guardian holds the user back.
 5. **Missing or uncertain EEG means cautious behaviour.**
-6. **No surprise motion.** The walker never reverses and never turns on the spot on its own: turning on the spot only
-   happens in STEER, towards where the user is looking, and only if the turning footprint is clear.
-7. **Speed is capped** at 0.4 m/s.
+6. **The collision monitor is an independent safety layer**, last in the chain. The guardian is never the only
+   thing preventing a collision.
+7. **Speed is capped** at 0.5 m/s (0.25 m/s backwards).
 8. **VR room scale:** near the Guardian edge, or too far from the handles, the walker stops ("Room edge reached"),
    and stays stopped until the user lets go and grips again.
 9. **Photosensitivity:** flicker is limited to **6–13 Hz** (avoiding roughly 15–25 Hz), flicker contrast is capped,
@@ -198,8 +186,8 @@ the results are read correctly.
 |---|---|
 | Passthrough mixed reality: tags on real objects | **Full VR**: the user sees a virtual store at 1:1 scale, and tags are placed on virtual objects |
 | Headset-to-map calibration needed | **Recentre** puts the sim walker's handles at the user's hands |
-| User walks behind the walker | **Room scale** (default): the user walks for real in a cleared room, alongside the sim walker. **Stationary**: the user stands still and the view moves with the walker. Eye height is always the user's real one. |
-| Handle FSRs (Arduino) | The Quest controllers' **grip triggers** |
+| User walks behind the walker | **Room scale** (default): the user walks for real in a cleared room, and their walking pushes the sim walker. **Stationary**: the user stands still, pushes with the thumbsticks, and the view moves with the walker. Eye height is always the user's real one. |
+| Handle grip sensor + load cells (Arduino) | Holding the controllers' **grip triggers** = hands on. The **push**: room scale - a virtual spring between each hand and its handle (walk ahead of the handles and the walker comes along); stationary - the thumbsticks |
 | LiDAR, motors, real store | Simulated in Gazebo: LiDAR, IMU, wheel odometry, a 20 × 14 m store with aisles and clutter |
 
 **Known limitations of the VR build:**
@@ -328,24 +316,26 @@ ros2 run my_robot_autonomy eeg_check alpha    # participant closes their eyes fo
 cd ~/eye2steering_ws
 colcon build
 source install/setup.bash
-ros2 launch my_robot_bringup walker_tentacle.launch.xml vr:=true eeg:=muse
+ros2 launch my_robot_bringup walker_assist.launch.xml vr:=true eeg:=muse
 ```
-This starts the simulated store and walker, the tentacle planner, the grip state (from the Quest's grip triggers),
+This starts the simulated store and walker, ASSIST and the guardian, the grip (from the Quest's grip triggers),
 the hazard loop, the EEG decoder, the web bridge and RViz (for the operator). Options:
 - `vr_mode:=stationary` if there's no room to walk (default `room_scale`)
 - `gazebo_view:=true` to also open the Gazebo 3D window (B5)
 
-The walker **won't move** until the operator presses Start walking **and** the participant grips both handles.
+The walker **won't move** until the operator presses Start walking, the participant holds both grip triggers,
+**and** they push.
 
 **B5. Let other people watch, live.** While the participant is in VR, anyone at the PC can watch the walker moving
 and operating **in real time, as the participant experiences it**. Each view joins the running session, and closing
 one doesn't affect anything.
 
-**Watch in RViz**: the robot moving and thinking: the tentacle fan coloured by cost, the chosen trajectory and its
-edges, the hazards and their probe states, and the collision monitor's zones. Open a new WSL terminal and paste:
+**Watch in RViz**: the robot as the participant experiences it: **where their push is taking them (white) and where
+the walker actually goes (green, orange when the guardian steps in)**, the trajectory edges, the hazards and their
+probe states, and the collision monitor's zones. Open a new WSL terminal and paste:
 ```bash
 source ~/eye2steering_ws/install/setup.bash
-ros2 run rviz2 rviz2 -d ~/eye2steering_ws/install/my_robot_bringup/share/my_robot_bringup/rviz/walker_tentacle.rviz --ros-args -p use_sim_time:=true
+ros2 run rviz2 rviz2 -d ~/eye2steering_ws/install/my_robot_bringup/share/my_robot_bringup/rviz/walker_assist.rviz --ros-args -p use_sim_time:=true
 ```
 
 **Watch in Gazebo 3D**: the store and the walker moving through it, from any angle (drag to orbit). Open a new WSL
@@ -366,8 +356,8 @@ each hazard's state, and the controls in [Operator controls](#operator-controls)
 1. **Room scale:** stand the participant at one end of the cleared space, facing along its long side.
 2. On the Quest, open the browser and go to `https://<PC-IP>:8443`.
 3. Wait for **"Connected"**, then tap **Enter VR**.
-4. Give them both controllers. Ask them to hold them where the walker's handles would be, about 40 cm in front of
-   them at hip height. After 1 s the view **recentres** automatically: the sim walker's handles appear at their hands,
+4. Give them both controllers, **holding the grip triggers** (that's their hands on the handles). Ask them to hold
+   them where the walker's handles would be, about 40 cm in front of them at hip height. After 1 s the view **recentres** automatically: the sim walker's handles appear at their hands,
    facing the way they face. To redo it, hold **A or X for 1 s** (or press **Recentre** on the operator page).
 
 **B8. Check the SSVEP response** (about 1 minute). On the operator page press **SSVEP check**. A test patch flickers
@@ -377,16 +367,19 @@ fails, check the Oz electrode (B1) before continuing.
 **B9. Press Start walking** on the operator page.
 
 **B10. Tell the participant:**
-- **Hold both grip triggers lightly to walk.** The walker drives forward slowly; walk along with it.
-- **Let go with either hand to stop.**
-- **Squeeze both firmly and look where you want to go, to steer.** Look far round and it turns on the spot.
-- Flickering patches appear on obstacles ahead, and fade if the EEG shows they've seen them.
-- The floor lines show where the walker is about to go.
-- If the walker stops at a dead end or a junction, the headset says **"Path blocked. Squeeze to steer out"**.
+- **Hold both grip triggers: those are your hands on the handles.** Let go and the walker stops.
+- **Room scale: just walk.** Walk forward and the walker comes with you. Lead with one hand to turn; hold back to
+  slow down. (Stationary: the left thumbstick pushes and pulls, the right one turns.)
+- **The walker only ever helps.** If you're heading into something, it slows you and bends your path round it
+  (the floor lines turn orange first). It never pulls you anywhere.
+- Flickering patches appear on obstacles ahead, and fade if the EEG shows you've seen them. Ones you miss get more
+  help.
+- At a dead end it stops and says **"Blocked ahead. Turn to get round it"**: push one handle and pull the other to
+  turn on the spot.
 - Room scale: near the edge of the space it stops and says **"Room edge reached"**. Let go, hold **A or X for 1 s**
   to reset, turn round, and carry on.
 
-**B11. To stop**, the participant lets go, or press **Stop walking** on the operator page, or **Stop flicker** (all
+**B11. To stop**, the participant lets go of the triggers, or press **Stop walking** on the operator page, or **Stop flicker** (all
 tags stop flickering immediately). Take the headset off, then press Ctrl+C in the WSL terminal.
 
 **B12. Results** are saved to `~/eye2steering_ws/sessions/<date-time>/`, timestamped: every hazard and its states, the
@@ -408,22 +401,22 @@ The simulated walker in the store, with the keyboard as the handles. **Terminal 
 cd ~/eye2steering_ws
 colcon build
 source install/setup.bash
-ros2 launch my_robot_bringup walker_tentacle.launch.xml
+ros2 launch my_robot_bringup walker_assist.launch.xml
 ```
-**Terminal 2** (the handles, and a pretend head):
+**Terminal 2** (the handles):
 ```bash
 source ~/eye2steering_ws/install/setup.bash
 ros2 run my_robot_autonomy walker_keys
 ```
-`w` both hands on (WALK) · `s` squeeze (STEER) · `space` let go (STOP) · `l` / `r` one hand · `a` / `d` turn the head
-30° left / right · `f` head straight · `e` "the user noticed it" (with `eeg:=toggle`) · `q` quit.
+`space` hands on / off · `w` / `s` push harder / softer (below zero pulls back) · `a` / `d` turn left / right ·
+`x` stop pushing · `e` "the user noticed it" (with `eeg:=toggle`) · `q` quit.
 
 To watch in 3D as well, in another terminal:
 ```bash
 export IGN_GAZEBO_RESOURCE_PATH=$HOME/eye2steering_ws/install/my_robot_description/share
 LIBGL_ALWAYS_SOFTWARE=1 ign gazebo -g --render-engine ogre2
 ```
-To drive by hand instead (teleop beats the planner):
+To drive by hand instead (teleop beats the guardian):
 ```bash
 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r /cmd_vel:=/cmd_vel_joy
 ```
@@ -432,9 +425,9 @@ ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r /cmd_vel:=/cm
 
 | You have | Launch options | What replaces the missing part |
 |---|---|---|
-| Nothing | `vr:=true grip:=keyboard eeg:=model`, then open `https://localhost:8443` on the PC (`http://` without the certificate, A5) | The browser shows the VR scene on the desktop. Drag to look; hold **W** for hands on, **W + Space** to squeeze. `ssvep_emulator` decides what the "user" registers. |
+| Nothing | `vr:=true grip:=quest eeg:=model`, then open `https://localhost:8443` on the PC (`http://` without the certificate, A5) | The browser shows the VR scene on the desktop. Drag to look; **W / S** push / pull, **A / D** turn (hands count as on while a key is down). `ssvep_emulator` decides what the "user" registers. |
 | Quest, no Muse | `vr:=true eeg:=emulator` | Simulated raw EEG through the real decoder, driven by where the headset is actually looking |
-| Muse, no Quest | `vr:=true grip:=keyboard eeg:=muse` and open the scene on a PC monitor | The flicker is drawn on the monitor. For SSVEP testing, use a 60 Hz or higher monitor. |
+| Muse, no Quest | `vr:=true grip:=quest eeg:=muse` and open the scene on a PC monitor (W / A / S / D to push) | The flicker is drawn on the monitor. For SSVEP testing, use a 60 Hz or higher monitor. |
 
 EEG stand-ins: `eeg:=model` (each probed hazard registered after 2–4 s with probability `p_detect:=0.8`),
 `eeg:=toggle` (registered only when you press `e` in `walker_keys`), `eeg_valid:=false` (no reliable EEG: everything
@@ -442,24 +435,24 @@ cautious), `eeg:=emulator` (simulated raw EEG, real decoder), `eeg:=muse` (the r
 
 ---
 
-## Tentacle planner reference: topics, parameters, scenarios
+## ASSIST + guardian reference: topics, parameters, scenarios
 
 ### Nodes and topics
 
 | Node | In | Out |
 |---|---|---|
-| `grip_state_node` | `/walker/grip_raw` (Quest), `/walker/grip_keys` (keyboard), serial (Arduino), `/walker/force_stop`, `/walker_enabled` | `/walker/grip_state` (GripState, 50 Hz) |
-| `tentacle_planner_node` | `/scan`, `/odometry/filtered`, `/walker/grip_state`, `/head_pose`, `/hazards` | `/cmd_vel_tentacle`, `/walker/trajectory`, `/walker/trajectory_left`, `/walker/trajectory_right`, `/walker/tentacles_debug`, `/walker/steering_status` (20 Hz); also `/plan` (for the hazard tracker), `/walker_status` |
-| `velocity_smoother` (Nav2) | `/cmd_vel_tentacle` | `/cmd_vel_smoothed` |
+| `grip_state_node` | `/walker/grip_raw` (Quest triggers), `/walker/grip_keys` (keyboard), serial (Arduino), `/walker/force_stop`, `/walker_enabled` | `/walker/grip_state` (hands on or off, 50 Hz); from the Arduino also `/walker/handle_force` |
+| `assist_guardian_node` | `/scan`, `/walker/grip_state`, `/walker/handle_force`, `/hazards` | `/cmd_vel_guardian`, `/walker/intended_path` (where the push alone goes), `/walker/trajectory` + `_left` + `_right` (where the walker actually goes), `/walker/tentacles_debug`, `/walker/steering_status` (20 Hz); also `/plan` (for the hazard tracker), `/walker_status` |
+| `velocity_smoother` (Nav2) | `/cmd_vel_guardian` | `/cmd_vel_smoothed` |
 | `twist_mux` | `/cmd_vel_smoothed`, `/cmd_vel_joy` (teleop, wins) | `/cmd_vel_mux` |
 | `collision_monitor` (Nav2) | `/cmd_vel_mux`, `/scan` | `/cmd_vel_out` (the walker) |
 | `hazard_tracker` | `/scan`, `/plan`, `/probe_results`, `/eeg_status` | `/hazards` (with `registered`, `eeg_valid`) |
 | `ssvep_emulator` / `eeg_decoder` | hazards / the Muse over LSL | `/probe_results`, `/eeg_status` |
-| `web_server` | the headset | `/head_pose`, `/walker/grip_raw`, `/walker/force_stop`; sends trajectory, steering status, hazards to the headset |
+| `web_server` | the headset | `/head_pose`, `/walker/grip_raw`, `/walker/handle_force`, `/walker/force_stop`; sends both paths, the guardian's state, hazards to the headset |
 
-Messages (`walker_interfaces`): `GripState` (left, right, state STOP / WALK / STEER), `SteeringStatus` (grip state,
-authority 0 = machine … 1 = user, desired yaw, turning in place, blocked, caution, hint, notice), `Hazard` /
-`HazardArray`, `ProbeResult`.
+Messages (`walker_interfaces`): `HandleForce` (left, right in N, + = pushing), `GripState`, `SteeringStatus`
+(intervention 0 … 1, braking, nudging, user speed, blocked, caution, notice …), `Hazard` / `HazardArray`,
+`ProbeResult`.
 
 ### Parameters
 
@@ -467,68 +460,64 @@ All in `src/my_robot_bringup/config/`:
 
 | File | What's in it |
 |---|---|
-| `tentacle_planner.yaml` | tentacles (count, k_max, lengths), footprint (walker + user) and safety margin, cost weights, berths, authority (c_low / c_high), speed and accelerations, caution, turning in place, hint and notice timing |
-| `grip.yaml` | source, light / firm thresholds, hysteresis, release grace, steer hold, one-handed mode, serial port |
-| `velocity_smoother.yaml` | max velocity [0.4, 0, 0.8], acceleration 0.3 m/s² (braking 0.5), 0.8 rad/s², open loop |
-| `collision_monitor.yaml` | stop zone (walker body + 8 cm), slowdown zone (0.5 m ahead, half speed) |
-| `twist_mux_tentacle.yaml` | planner vs teleop priority |
+| `assist_guardian.yaml` | ASSIST cart (mass, damping, deadband, speed limits), dead-man timeout, footprint and safety margin, the guardian (look-ahead, braking, when and how firmly it bends the path, berths, caution, the 35° limit, undoing its correction) |
+| `grip.yaml` | grip source and thresholds, serial port |
+| `velocity_smoother.yaml` | max velocity [0.5, 0, 0.8], backwards 0.25, braking up to 0.8 m/s² (hands-off stop; the guardian itself plans 0.3), open loop |
+| `collision_monitor.yaml` | stop zone (walker body + 8 cm), slowdown zone (0.35 m ahead, half speed; the brief said ~0.5 m, but the guardian stops 0.45–0.55 m from walls and Nav2 slows *any* motion, even backing away, while a point is inside the zone) |
+| `tentacle_planner.yaml` | the tentacle fan the guardian uses (and the self-driving planner on `walker_tentacle.launch.xml`) |
 
-**Where the planner differs from the brief, and why** (all are parameters):
-- **Tentacle length 2.5 m** (brief: `v × 2 s` clamped to 1.0–2.5 m). At 0.4 m/s that is always 1 m, which leaves no
-  room to swerve gently round an obstacle. The floor display still shows the next 2 s.
-- **Lane-change (S-shaped) tentacles** as well as the brief's arcs. With arcs alone, a walker this long can't get
-  past an obstacle in an aisle: every arc that swerves round it stays angled, and the footprint is then too wide for
-  the gap.
-- **A tentacle is valid if it's clear for 0.7 m**, not its whole length. Constant-curvature arcs that swerve round
-  something in an aisle keep curving into the aisle wall later, so whole-length validity rules out every swerve. A
-  shorter clear length costs more, and the choice is re-made 20 times a second.
-- **Hazard berth is a linear hinge**, `(berth − gap) / berth_registered`, not a plain Gaussian. With a wider Gaussian
-  the cost is *flatter* close to the hazard, so the "wider berth" pushed less. The hinge has the same slope for both
-  berths and the wide one reaches further, so it is never weaker. It is bounded, so it can't shove the walker into
-  another obstacle. (A squared hinge was tried and did exactly that in clutter.)
-- **Heading is judged 0.6 m and 1.2 m along each tentacle**, not at its end. Only the start of a tentacle is ever
-  driven before re-planning: judged by its end, an S-curve that first swings the wrong way looked free (the walker
-  turned 66° for a 45° look), and turns towards the head were sluggish.
-- **WALK keeps its heading** (returns to it after going round something) and never turns more than 45° on its own.
-- **Safety margin 12 cm**, more than the collision monitor's 8 cm stop zone, so the collision monitor never has to act
-  in normal driving.
-- The collision monitor's zones cover the **walker body only**, not the user: on the real walker the LiDAR would see
-  the user's legs and stop for ever.
-- **Velocity smoother in open loop** (brief: odom feedback). In closed loop it brakes relative to the measured speed,
-  which lags, so stopping took 2.7 s and 0.58 m instead of about 1 s and 0.2 m.
-- The sim drives through Gazebo's DiffDrive plugin (`/cmd_vel_out`), not `diff_drive_controller`.
-  `ign_ros2_control` isn't installed here.
+**What came from where:**
+- From **`main`**: ASSIST (handle forces → motion through a virtual cart: same model and defaults as
+  `eyesteer_core/control/admittance.py`) and the dead-man grip (`DeadMan`, 0.3 s). Ported, not merged: `main` is
+  a different codebase (MuJoCo + `eyesteer_core`) and is untouched.
+- From **`tentacle-only-driving`**: the tentacle fan with lane-change S-curves, the swept walker-and-user
+  footprint, the berths and caution from the EEG hazard loop, the collision monitor and velocity smoother chain, the
+  headset (room scale / stationary, Guardian stop), the scenario worlds and test harness.
+- **New:** the guardian (check the user's path, brake, bend it by holding a wheel back, the 35° limit, undoing its
+  own correction), the virtual-spring and thumbstick push in the headset, the two-colour floor lines.
+
+**Design notes:**
+- The guardian copies the walker's actual *speed* back into the cart (so a braked push doesn't wind up and lurch
+  when released) but not its *turn rate*: that stays the user's own, so its correction never becomes "what the user
+  wanted".
+- If the user keeps steering into a wall, the guardian bends them away up to 35°, and past that just stops them.
+  It won't overrule them further.
+- The collision monitor's zones cover the walker body only, not the user (on the real walker the LiDAR would see
+  the user's legs).
+- The sim drives through Gazebo's DiffDrive plugin (`/cmd_vel_out`), not `diff_drive_controller`
+  (`ign_ros2_control` isn't installed here).
 
 ### Scenarios
 
 Each scenario is its own world. Run it in one terminal and the automatic check in another: it acts as the user
-(grip and head), measures what the walker does, and prints PASS or FAIL. The log of every tick goes to
-`~/eye2steering_ws/sessions/scenarios/<name>.json`.
+(holds the handles and pushes: 12 N per handle is a 0.4 m/s walk), measures what the walker does, and prints PASS
+or FAIL. Every scenario also checks: no collisions, the collision monitor never needed, and **never faster than the
+push**. The log of every tick goes to `~/eye2steering_ws/sessions/scenarios/assist_<name>.json`.
 ```bash
-ros2 launch my_robot_bringup walker_tentacle.launch.xml scenario:=corridor
+ros2 launch my_robot_bringup walker_assist.launch.xml scenario:=obstacle
 ```
 ```bash
 source ~/eye2steering_ws/install/setup.bash
-ros2 run my_robot_autonomy run_scenario corridor
+ros2 run my_robot_autonomy run_assist_scenario registered
 ```
 
-| # | Check | `scenario:=` (world) | `run_scenario` | Expected |
+| # | Check | `scenario:=` (world) | `run_assist_scenario` | Expected |
 |---|---|---|---|---|
-| 1 | Open space | `open` | `open` | WALK straight; STEER + head 45° curves to it; STEER + 180° turns on the spot |
-| 2 | Corridor | `corridor` | `corridor` | Centred, steady, no oscillation |
-| 3 | Aisle end / T-junction | `tjunction` | `tjunction` | WALK doesn't turn on its own; STEER turns towards the head |
-| 4 | Obstacle, registered | `obstacle` | `registered` | Avoids at normal speed, normal berth |
-| 5 | Obstacle, unregistered | `obstacle eeg_valid:=false` | `unregistered` | Half speed, visibly wider berth |
-| 6 | Cluttered | `cluttered` | `cluttered` | No collisions; collision monitor never needed |
-| 7 | Dead end | `deadend` | `deadend` | Stops, blocked; notice after ~1 s; STEER + turned head turns it out; notice clears when STEER starts |
-| 8 | Grip release | `open` | `grip_release` | Stops within the deceleration limit and holds; one hand off = STOP |
+| 1 | Open space | `open` | `open` | No push: no motion. Push straight: exactly the pushed speed. Right handle harder: turns left. Push + pull: turns on the spot |
+| 2 | Corridor | `corridor` | `corridor` | Drifting towards a wall: kept off it |
+| 3 | T-junction | `tjunction` | `tjunction` | Pushed straight at the T: stops, doesn't take a branch by itself; the user's turn takes it into the branch |
+| 4 | Obstacle, registered | `obstacle` | `registered` | Gets past with light help, no caution |
+| 5 | Obstacle, no EEG | `obstacle eeg_valid:=false` | `unregistered` | Earlier, firmer help, half speed |
+| 6 | Cluttered | `cluttered` | `cluttered` | Pushed straight: gets through, no collisions |
+| 7 | Dead end | `deadend` | `deadend` | Stops before the wall; notice; the user turns it on the spot and walks out |
+| 8 | Grip release | `open` | `grip_release` | Hands off: stops within the deceleration limit, even if the handles are still pressed; hands back on, no push: stays put |
 
 Scenarios 9 (room scale) and 10 (stationary) are checked in the headset: after recentre the handles are at the
-controllers and the eye height is the user's own; walking along stays aligned; near the Guardian edge it stops with
-"Room edge reached"; reset re-aligns; in stationary the view follows the walker without ever being turned for the
-user, and the vignette shows while moving.
+controllers; walking forward pushes the walker along with you; near the Guardian edge it stops with "Room edge
+reached"; in stationary the thumbsticks push it and the view is never turned for you.
 
-**Unit tests** (geometry, collision, edge lines, cost ordering, authority, grip states, hint and notice timing):
+**Unit tests** (ASSIST, dead-man, the never-pushes rule, braking, bending, EEG-dependent help, plus the tentacle
+geometry and grip tests):
 ```bash
 cd ~/eye2steering_ws/src/my_robot_autonomy && python3 -m pytest test
 ```
@@ -537,7 +526,7 @@ cd ~/eye2steering_ws/src/my_robot_autonomy && python3 -m pytest test
 
 | Stand-in | Real | How |
 |---|---|---|
-| Quest grip triggers (`grip:=quest`) or keyboard (`grip:=keyboard`) | Handle FSRs on an Arduino | `grip:=arduino`. The Arduino sends one line per reading, `left,right\n`, raw ADC counts (0–1023). Set `serial_port` in `grip.yaml`. Calibrate per user: `ros2 service call /grip_state/calibrate_relaxed std_srvs/srv/Trigger` while they hold relaxed, then `.../calibrate_firm` while they squeeze. |
+| Quest grip triggers + virtual spring / thumbsticks (`grip:=quest`), or the keyboard (`grip:=keyboard`) | Grip sensor + handle load cells on an Arduino | `grip:=arduino`. The Arduino sends one line per reading, `grip_left,grip_right,force_left,force_right\n`: grip as raw ADC counts (0–1023), forces in newtons (+ = pushing forward). Set `serial_port` in `grip.yaml`. |
 | `eeg:=model` / `toggle` / `emulator` | The Muse | `eeg:=muse` (Part B). Both publish the same `/probe_results`, so nothing else changes. |
 
 ---
@@ -564,15 +553,18 @@ To watch the session in RViz, in Gazebo 3D, or through the participant's eyes, s
 
 | Setting | Default | Where | What it does |
 |---|---|---|---|
-| Walking speed | 0.4 m/s | `config/tentacle_planner.yaml` (`v_max`) and `velocity_smoother.yaml` | Normal pace |
-| Caution speed | 50 % | `tentacle_planner.yaml` (`caution_scale`) | With an unregistered / no-EEG hazard within 2 m ahead |
-| Hazard berth | 0.15 m registered, 0.45 m not | `tentacle_planner.yaml` | How far the walker's side keeps from a hazard |
-| Safety margin | 0.12 m | `tentacle_planner.yaml` | Around the walker-and-user footprint |
-| Head authority | full at 0.8 m clearance, none at 0.15 m | `tentacle_planner.yaml` (`c_high`, `c_low`) | Risk-scaled steering in STEER |
-| Turn on the spot | head > 60° away (20° when blocked) | `tentacle_planner.yaml` | When STEER pivots instead of curving |
-| WALK turn limit | 45° | `tentacle_planner.yaml` (`walk_max_turn_deg`) | Beyond this WALK stops and waits for STEER |
-| Grip thresholds | light 0.2, firm 0.6, hold 0.5 s, grace 0.2 s | `config/grip.yaml` | WALK / STEER / STOP |
-| VR mode | room scale | launch option `vr_mode:=stationary` | Walk in a room, or stand still |
+| How heavy the walker feels | 25 kg, 40 N·s/m | `config/assist_guardian.yaml` (`mass`, `damping`) | Steady speed = push past the deadband ÷ damping (24 N → 0.4 m/s) |
+| Top speed | 0.5 m/s (0.25 backwards) | `assist_guardian.yaml` (`v_max`) and `velocity_smoother.yaml` | |
+| Push deadband | 4 N per handle | `assist_guardian.yaml` | Resting hands don't move it |
+| Dead-man | 0.3 s in total | `assist_guardian.yaml` (`release_timeout_s`, 0.1 s) + `grip.yaml` (`release_grace_s`, 0.2 s) | Hands off this long → locked |
+| When it starts bending your path | 2.3 m clear (2.6 m for a missed hazard) | `assist_guardian.yaml` (`comfort_*`) | Sooner = more help |
+| How firmly | 1.0 (all the way to the safer path) | `assist_guardian.yaml` (`nudge_*`) | A registered hazard gets help later, not weaker |
+| Braking it plans for | 0.3 m/s² (0.15 for a missed hazard) | `assist_guardian.yaml` (`brake_*`) | Lower = starts slowing sooner |
+| Most it turns you | 35° | `assist_guardian.yaml` (`max_deviation_deg`) | Beyond this it only brakes |
+| Hazard berth | 0.15 m registered, 0.45 m not | `assist_guardian.yaml` | |
+| Caution speed | 50 % of top speed | `assist_guardian.yaml` (`caution_scale`) | With a missed / no-EEG hazard within 2 m |
+| Room scale push | 90 N per m your hand is ahead of the handle, at most 30 N | `walker_vr` web server parameters | How the virtual spring feels |
+| VR mode | room scale | launch option `vr_mode:=stationary` | Walk in a room, or stand and use the thumbsticks |
 | Room safety | 0.5 m from the Guardian edge, 0.8 m from the handles | `walker_vr` web server parameters | Forces STOP |
 | Probe start distance | 4.0 m | `config/hazards.yaml` | How far ahead a hazard starts being probed |
 | Decision distance | 2.5 m | `config/hazards.yaml` | Escalate here if the hazard still isn't registered |
@@ -591,9 +583,10 @@ To watch the session in RViz, in Gazebo 3D, or through the participant's eyes, s
 | Quest shows "This site can't be reached" | Quest and PC not on the same Wi-Fi, mirrored networking not on (A3), or firewall (A4) |
 | Quest says "Connecting…" forever | The system isn't running (B4), or the page was opened before it started: reload |
 | PC browser warns about the page | Expected with the self-signed certificate: choose Advanced → Proceed (A7) |
-| Walker doesn't move after Start walking | The participant must hold **both** grip triggers. Check the grip state on the operator page. Or the system is still starting (about 10 s after launch). |
+| Walker doesn't move after Start walking | It only moves when pushed: the participant must hold **both** grip triggers *and* walk forward (room scale) or push the left thumbstick (stationary). Check the grip state on the operator page. Or the system is still starting (about 10 s after launch). |
 | Walker stops with "Room edge reached" | Near the Guardian edge, or the participant is too far from the handles. Let go, hold A or X for 1 s to reset. |
-| "Path blocked. Squeeze to steer out" | Nothing ahead is clear (dead end, junction). Squeeze both triggers firmly and look the way to go. |
+| "Blocked ahead. Turn to get round it" | Nothing the way they're pushing is clear (dead end, junction, wall). Turn: push one handle and pull the other (room scale: one hand forward, one back). |
+| The walker keeps stopping in a corridor | The participant is steering into a wall: the guardian bends them away up to 35°, then just stops them. Push straighter. |
 | No **Enter VR** button | The page was opened with `http://` instead of `https://` |
 | `eeg_check stream` finds no stream | BlueMuse isn't streaming, or mirrored networking (A3) isn't on |
 | Stream found but no AUX channel | Turn on the AUX channel in the streaming tool's settings |
@@ -610,23 +603,23 @@ To watch the session in RViz, in Gazebo 3D, or through the participant's eyes, s
 ```
 src/
 ├── my_robot_description/   robot model (URDF/xacro, meshes), LiDAR, IMU, camera
-├── my_robot_bringup/       launch files (walker_tentacle.launch.xml; the Nav2 / SLAM ones are kept), configs, the store
+├── my_robot_bringup/       launch files (walker_assist.launch.xml; walker_tentacle and the Nav2 / SLAM ones are kept), configs, the store
 │                           and scenario worlds (worlds/scenarios, made by make_scenarios.py), RViz layouts
 ├── my_robot_autonomy/      the walker's behaviour (Python nodes)
-│   ├── grip_state_node     handles → STOP / WALK / STEER (Quest, keyboard, Arduino FSRs, operator)
-│   ├── tentacle_planner_node  the tentacle planner (maths in tentacle_core.py)
+│   ├── assist_guardian_node   ASSIST + the guardian (maths in guardian_core.py)
+│   ├── grip_state_node     hands on the handles (Quest, keyboard, Arduino) and, from the Arduino, the push
 │   ├── hazard_tracker      LiDAR → tracked hazards, relevance, probe queue, frequencies
 │   ├── ssvep_emulator      stand-in SSVEP verdicts (model / toggle)
 │   ├── eeg_decoder         Muse/LSL → SSVEP present / absent per hazard; the SSVEP check
 │   ├── muse_emulator       simulated raw EEG for testing without a Muse
 │   ├── eeg_check           EEG setup checks
-│   ├── walker_keys         keyboard handles and head, for desktop testing
-│   ├── run_scenario        automatic scenario checks
+│   ├── walker_keys         keyboard handles (grip and push), for desktop testing
+│   ├── run_assist_scenario automatic ASSIST scenario checks (run_scenario: the self-driving planner's)
 │   ├── session_logger      records each session to sessions/
 │   ├── world_markers       the store drawn in RViz
 │   ├── test/               unit tests (pytest)
-│   └── older nodes (my_robot_nav.launch.xml): tentacles, tentacle_driver, walker_brain, trajectory_overlay
-├── walker_interfaces/      ROS messages: grip state, steering status, hazards, probe results, trajectory, tentacles
+│   └── also: tentacle_planner_node (self-driving, walker_tentacle.launch.xml), and older nodes for my_robot_nav.launch.xml
+├── walker_interfaces/      ROS messages: handle force, grip state, steering status, hazards, probe results, trajectory, tentacles
 └── walker_vr/              the web bridge (HTTPS + WebSocket), certificates, and the pages:
     └── web/                index.html (headset), spectator.html, operator.html
 ```
@@ -638,49 +631,54 @@ src/
 | Part | State |
 |---|---|
 | Simulated walker: LiDAR, IMU, camera, EKF, Gazebo store world | ✅ done |
-| Tentacle planner (no Nav2 planner, no SLAM), velocity smoother, collision monitor, twist_mux | ✅ done, tested in sim (8 scenarios) |
-| Grip state: STOP / WALK / STEER, squeeze to steer, startle and slip protection, calibration | ✅ done, unit tested and tested through the web bridge |
-| Head steering in STEER with risk-scaled authority, turning on the spot, blocked notice, hint | ✅ done, tested in sim |
+| ASSIST (from `main`): handle forces → motion; dead-man grip | ✅ done, unit tested, tested in sim |
+| Guardian: checks the user's path, brakes and bends it by holding a wheel back, never pushes, never more than 35°, undoes its correction | ✅ done, unit tested, tested in sim (8 scenarios) |
+| EEG-dependent help: earlier and firmer, wider berth and half pace for a missed hazard | ✅ done, tested in sim |
+| Push inputs: Arduino load cells, keyboard, headset virtual spring (room scale) and thumbsticks (stationary) | ✅ done; headset push checked for syntax and through the bridge, not yet in a real headset |
 | Hazard tracking, probe queue, frequencies, `registered` / `eeg_valid` | ✅ done, tested in sim |
-| SSVEP emulator (model / toggle), EEG decoder, Muse emulator, EEG checks | ✅ done, tested with the emulators |
-| Web bridge, headset app (grip triggers, room scale / stationary, Guardian stop, hint and notice text), operator page | ✅ done, tested with a simulated headset |
-| Session logging (head, walker, grip, steering, hazards, timestamped) | ✅ done |
-| **With a real Quest 3** (WebXR, grip triggers, 90 Hz flicker, recentre, Guardian bounds, comfort) | ⏳ not tried yet (scenarios 9 and 10) |
-| **With a real Muse + Oz** (BlueMuse/muselsl over LSL from Windows, real SSVEP) | ⏳ not tried yet |
-| **With the real handle FSRs** (Arduino) | ⏳ not tried yet |
+| SSVEP emulator, EEG decoder, Muse emulator, EEG checks | ✅ done, tested with the emulators |
+| Web bridge, headset app, operator page, two-colour floor lines | ✅ done, tested with a simulated headset |
+| **With a real Quest 3** (grip triggers, virtual-spring push, room scale, Guardian bounds, 90 Hz flicker) | ⏳ not tried yet (scenarios 9 and 10) |
+| **With a real Muse + Oz** | ⏳ not tried yet |
+| **With real handle sensors** (grip + load cells, Arduino) | ⏳ not tried yet |
 
-**Test results** (Gazebo, automatic checks with `run_scenario`, one clean run of all eight):
+**Test results** (Gazebo, `run_assist_scenario`; 12 N per handle = a 0.4 m/s walk):
 
 | # | Scenario | Result | Measured |
 |---|---|---|---|
-| 1 | Open space | ✅ 5/5 | WALK: 0.0 cm drift; STEER 45°: reached 42.9° (it settles within ~3°); 180°: turned on the spot, ended 7° off |
-| 2 | Corridor 1.5 m | ✅ 3/3 | 0.3 cm off centre, 0.1° heading wobble |
-| 3 | T-junction | ✅ 4/4 | WALK stopped at the T without turning (blocked); STEER took the left branch, 88.7° |
-| 4 | Obstacle, registered | ✅ 4/4 | Passed at full speed (0.40 m/s), 21.6 cm from it |
-| 5 | Obstacle, no EEG | ✅ 4/4 | Half speed (0.20 m/s), 34.1 cm from it (wider berth) |
-| 6 | Cluttered | ✅ 3/3 | Through 5 obstacles in 36 s, never blocked, closest 23.7 cm (walker), 18.8 cm (user) |
-| 7 | Dead end | ✅ 7/7 | Stopped 0.65 m from the wall; notice after 1.00 s; cleared the moment STEER started; turned round and walked out |
-| 8 | Grip release | ✅ 4/4 | From 0.40 m/s: stopped in 1.15 s and 0.29 m, then held (0.1 cm drift); one hand off = STOP |
-| | **All** | **34/34** | **No contacts in any scenario. The collision monitor never had to act.** |
+| 1 | Open space | ✅ 7/7 | Hands on, no push: 0.0 cm moved. Push straight: 0.40 m/s exactly as pushed, 0 cm drift, 0 % intervention. Right handle harder: turned left 69°. Push + pull: turned 63° on the spot |
+| 2 | Corridor | ✅ 4/4 | Drifting towards a wall: kept 25 cm off centre (wall at 75 cm), 4.8 m along |
+| 3 | T-junction | ✅ 5/5 | Pushed straight at the T: stopped, turned only 29° by itself (limit 35°); the user's turn took it into the branch (89°) |
+| 4 | Obstacle, registered | ✅ 5/5 | Got past, 17 cm from it, no caution, slowest 0.22 m/s, 5 % intervention on average |
+| 5 | Obstacle, no EEG | ✅ 5/5 | Got past, 18 cm from it, caution (half pace), slowest 0.23 m/s, 4 % intervention |
+| 6 | Cluttered | ✅ 4/4 | Pushed straight through 5 obstacles in 42 s; closest 17.9 cm (walker), 12.9 cm (user); 3 % intervention |
+| 7 | Dead end | ✅ 7/7 | Stopped 0.45 m from the wall; "Blocked ahead" notice; the user turned it round on the spot (0 cm moved) and walked out |
+| 8 | Grip release | ✅ 5/5 | Hands off at 0.40 m/s (handles still pressed): stopped in 0.95 s, 0.27 m, then held; hands back on, no push: stayed put |
+| | **All** | **42/42** | **No contacts. The collision monitor never had to act. Never faster than the push in any of 4,600+ ticks checked.** |
 
-Rates: planner 19.8 Hz and grip state 49.6 Hz in wall-clock time (20 and 50 Hz in sim time; Gazebo runs just under
-real time). The trajectory, its edges, the steering status, the hazards and the VR config all reach the headset
-through the web bridge (about 20 messages a second). Unit tests: 27 pass.
+All on the final build, except that scenarios 1–7 ran before the velocity smoother's braking limit was raised from 0.5 to 0.8 m/s² for the hands-off stop (that change only lets it stop harder). Unit tests: 42 pass.
 
 **Known limitations, from testing in simulation:**
 - **The walker and the user need a gap of about 0.85 m** (0.6 m wide, plus 12 cm either side), and a long one: with
-  the user it is 1.25 m long, so it passes things nearly parallel. In a 2.4 m aisle with a box in the middle (1.05 m
-  either side) it gets blocked and asks the user to steer. Clutter has to be about 3 m apart to weave through.
-- In WALK it never turns more than 45° by itself, so it stops at junctions and dead ends until the user steers. This
-  is deliberate.
+  the user it is 1.25 m long, so it passes things nearly parallel. The guardian can't get them through a 1.05 m gap
+  by itself; the user has to line up straight.
+- **The guardian bends the user's path at most 35°**, so at a junction or dead end it just stops and the user turns.
+  This is deliberate: where to go is the user's decision.
+- **In the single-obstacle test, registered vs missed differ less than the design suggests.** A missed hazard gets
+  caution (half pace) and a slightly wider pass (18 cm vs 17 cm), but bending round the box slows a registered pass
+  almost as much (slowest 0.22 vs 0.23 m/s; 5 % vs 4 % intervention on average). The difference mainly shows when
+  the user isn't heading straight at it. Tuning `comfort_*` and the berths would separate them more; worth deciding
+  with real users which matters.
+- **Hands off to stop: 0.27 m from 0.4 m/s.** That's the 0.3 s dead-man grace (as `main`), about 0.2 s of system
+  latency, then braking at 0.8 m/s² (nobody is holding on). A shorter grace stops sooner, but makes brief slips of the
+  hand stop the walker.
 - Which objects count as hazards comes from the world file's names, standing in for an object classifier.
 - The emulated EEG is a simplified model (3 µV SSVEP in background noise). Real responses vary from person to person,
   which is why the SSVEP check sets the threshold per participant.
 
-**Future extension, manual mode.** The user pushes the walker like a conventional one, and the robot steps in only
-when an obstacle is in the path, by braking one wheel more than the other, so the user's own push carries the walker
-round the hazard. The robot only resists and never pushes, so it can't drive the user into anything. The same SSVEP
-logic sets how strongly it intervenes. Not part of this build.
+**This branch builds what was the "manual mode" future extension:** the user pushes, and the robot steps in only
+when an obstacle is in the path, braking one wheel more than the other so the user's own push carries them round
+it. It only resists and never pushes.
 
 ---
 
@@ -689,25 +687,25 @@ logic sets how strongly it intervenes. Not part of this build.
 Mann defines humanistic intelligence (HI) as intelligence that arises when a human is part of the feedback loop of a
 computational process, with the human and computer inextricably intertwined [Mann 1998; Mann 2001].
 
-**The loop.** The machine senses the scene (LiDAR) and shows the human what it sensed (a tag). The human senses the
-scene and the tag. The machine senses the human (the EEG response at Oz, and head direction) and acts (avoiding
-gently, or escalating, and steering towards where the user faces when clearance allows). The human senses the
-machine's response (the tag fading or intensifying, the trajectory bending or widening, the walker slowing) and acts
-by looking where they want to go, or looking back to cancel. Neither side alone can do what the combined system
-does: the LiDAR can't see what the user has perceived or where they want to go, and the user can't see everything
-the LiDAR has detected.
+**The loop.** The human moves the walker: every motion starts with their push. The machine senses the scene (LiDAR)
+and shows the human what it sensed (a tag). The human senses the scene and the tag. The machine senses the human -
+their push, and their visual response at Oz to each tag - and acts only by holding them back: braking, or bending
+their path round something, earlier and more firmly for the hazards they didn't register. The human senses the
+machine's response (the tag fading or intensifying, the floor lines turning orange and bending, the handles
+resisting) and acts on it. Neither side alone can do what the combined system does: the LiDAR can't see what the
+user has perceived, and the user can't see everything the LiDAR has detected.
 
 | HI property | In this system |
 |---|---|
-| **Constancy** | The hazard loop and head tracking run continuously. There's no "BCI mode" to switch on. |
-| **Augmentation** | Walking is the primary task. The system adds a machine sense of the scene and only interrupts when that sense and the user's perception disagree. |
+| **Constancy** | The hazard loop and the guardian run continuously. There's no "BCI mode" to switch on. |
+| **Augmentation** | Walking - and pushing the walker - is the primary task, and the user's own push is the only thing that moves it. The machine adds a sense of the scene and steps in only when that sense and the user's path disagree. |
 | **Mediation** | The headset filters what the user sees: registered hazards fade, only missed ones are escalated. EEG is processed locally, and only "registered / not registered" per hazard reaches the motion system. |
-| **Unmonopolizing** | Tags and the trajectory are anchored in the scene rather than replacing it. The flicker is subtle and there's nothing to stare at. |
-| **Unrestrictive** | The user can look around and talk. Filtering and the deadband mean ordinary glances don't steer. |
-| **Observable** | Tags show what the LiDAR detected. The floor display shows intended motion, extra clearance and how much control the machine has. |
-| **Controllable** | The user steers by facing a direction and can cancel any previewed turn by looking back. Authority moves to the machine only as risk rises, and the shift is always shown. |
-| **Attentive** | The machine combines the LiDAR, the user's perception (EEG), the user's direction of interest (head) and the grip. |
-| **Communicative** | The weakest of the six. The headset is a channel from machine to human, and the EEG and head tracking are channels back. Sharing which hazards were missed with a caregiver is a future extension. |
+| **Unmonopolizing** | Tags and floor lines are anchored in the scene rather than replacing it. The flicker is subtle and there's nothing to stare at. |
+| **Unrestrictive** | The user can look around and talk: nothing they look at moves the walker. |
+| **Observable** | Tags show what the LiDAR detected. The floor lines show where the user's push is taking them, and turn orange to show any correction before it happens. |
+| **Controllable** | The user is in charge of every motion: they start it, set its speed and steer it, and letting go stops it. The machine can only hold them back - never push, never move on its own, never turn them more than 35° from their push - and it undoes its correction once clear. |
+| **Attentive** | The machine combines the LiDAR, the user's perception (EEG), and their push and grip. |
+| **Communicative** | The weakest. The headset is a channel from machine to human (tags, floor lines, notices), and the EEG and the handles are channels back. Sharing which hazards were missed with a caregiver is a future extension. |
 
 ### References
 - S. Mann, "Humanistic Computing: 'WearComp' as a New Framework and Application for Intelligent Signal Processing,"
