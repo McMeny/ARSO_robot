@@ -56,6 +56,8 @@ patch.group.position.copy(rosToThree(1.0, 0, 1.5));
 const hint = new TextPanel(scene, { icon: true });
 const notice = new TextPanel(scene, { icon: true, colour: '#ffcf70' });
 const safetyText = new TextPanel(scene, { icon: false, colour: '#ff8080' });
+const boundaryText1 = new TextPanel(scene, { icon: false, colour: '#ffcf70' });
+const boundaryText2 = new TextPanel(scene, { icon: false, colour: '#ffcf70' });
 
 // comfort vignette - darkens the edge of view while the walker moves (stationary mode)
 const vignette = new THREE.Mesh(new THREE.RingGeometry(0.22, 1.5, 48),
@@ -64,11 +66,15 @@ vignette.position.z = -0.3;
 vignette.renderOrder = 10;
 camera.add(vignette);
 
-let config = { vr_mode: 'room_scale', comfort_vignette: true, user_to_handle_offset: 0.4,
+let config = { vr_mode: 'room_scale', auto_stationary: true, min_room_area: 4.0, comfort_vignette: true,
+               user_to_handle_offset: 0.4,
                boundary_stop_margin: 0.5, max_user_handle_distance: 0.8,
                assist: false, spring_n_per_m: 90, max_push_n: 30 };
 let pose = { x: 0, y: 0, yaw: 0 };
 let steering = {};
+let vrMode = 'room_scale';      // the mode used this session (room scale falls back to stationary if the boundary is too small)
+let boundaryInfo = { kind: 'unknown', area: 0, fallback: false };
+let boundaryWarnUntil = 0;
 let inVR = false, connected = false, flickerOn = true, worldCount = 0;
 let bounds = null;              // Guardian polygon [[x, z], ...] in the tracking space, if known
 let anchor = null;              // set by recentre (see below)
@@ -89,7 +95,7 @@ addWorld(scene).then((n) => { worldCount = n; showStatus(); });
 
 function showStatus(extra = '') {
   status.textContent = `${connected ? 'Connected' : 'Connecting…'} · ${worldCount} objects · ` +
-    `${inVR ? `VR (${config.vr_mode})` : (config.assist ? 'desktop (drag to look, W/S push/pull, A/D turn)'
+    `${inVR ? `VR (${vrMode}${boundaryInfo.fallback ? ': boundary too small for walking' : ''})` : (config.assist ? 'desktop (drag to look, W/S push/pull, A/D turn)'
                                                           : 'desktop (drag to look, hold W = hands on, + Space = squeeze)')}` +
     `${flickerOn ? '' : ' · flicker OFF'} ${extra}`;
 }
@@ -130,7 +136,7 @@ function recentre() {
   const head = headLocal();
   const reach = Math.hypot(hands.x - head.x, hands.z - head.z);
   anchor = { theta, hands, head, reach: Math.max(0.25, Math.min(reach, 0.7)) };
-  if (config.vr_mode === 'room_scale') {
+  if (vrMode === 'room_scale') {
     dolly.rotation.set(0, theta, 0);
     const h = simHandles();
     const local = new THREE.Vector3(hands.x, 0, hands.z).applyAxisAngle(UP, theta);
@@ -145,7 +151,7 @@ function updateDolly() {
     dolly.rotation.set(0, pose.yaw, 0);
     return;
   }
-  if (!anchor || config.vr_mode === 'room_scale') return;   // room scale: fixed after recentre
+  if (!anchor || vrMode === 'room_scale') return;   // room scale: fixed after recentre
   // stationary: the view follows the walker's position, never its rotation
   dolly.rotation.set(0, anchor.theta, 0);
   const h = simHandles();
@@ -156,6 +162,12 @@ function updateDolly() {
 }
 
 // ---------- safety (room scale) ----------
+
+function polygonArea(pts) {
+  let a = 0;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) a += (pts[j][0] + pts[i][0]) * (pts[j][1] - pts[i][1]);
+  return Math.abs(a / 2);
+}
 
 function distanceToBounds(x, z) {
   if (!bounds || bounds.length < 3) return Infinity;
@@ -172,7 +184,7 @@ function distanceToBounds(x, z) {
 
 function checkSafety() {
   let reason = '';
-  if (inVR && anchor && config.vr_mode === 'room_scale') {
+  if (inVR && anchor && vrMode === 'room_scale') {
     const head = headLocal();
     if (distanceToBounds(head.x, head.z) < config.boundary_stop_margin) reason = 'Room edge reached';
     const world = camera.getWorldPosition(new THREE.Vector3());
@@ -208,7 +220,7 @@ function readPush(grip) {
   if (!config.assist) return null;
   if (inVR) {
     const session = renderer.xr.getSession();
-    if (config.vr_mode === 'room_scale') {
+    if (vrMode === 'room_scale') {
       if (!anchor) return { left: 0, right: 0 };
       // virtual spring: how far each hand is ahead of its handle, along the walker's forward direction
       const fwd = new THREE.Vector3(-Math.sin(pose.yaw), 0, -Math.cos(pose.yaw));
@@ -292,17 +304,34 @@ async function setupVR() {
   button.onclick = async () => {
     const session = await navigator.xr.requestSession('immersive-vr',
       { optionalFeatures: ['local-floor', 'bounded-floor'] });
-    // room scale: use the Guardian's floor space if the headset offers it, so its edge is known
+    // room scale: use the Guardian's floor space if the headset offers it, so its edge is known.
+    // The app can't change the Quest's boundary (only the headset's own settings can). If it is a small
+    // stationary circle - or there is none - walking can't work: say so, and use stationary mode instead.
     bounds = null;
+    vrMode = config.vr_mode;
+    boundaryInfo = { kind: 'none', area: 0, fallback: false };
     renderer.xr.setReferenceSpaceType('local-floor');
     if (config.vr_mode === 'room_scale') {
       try {
         const space = await session.requestReferenceSpace('bounded-floor');
         if (space.boundsGeometry && space.boundsGeometry.length >= 3) {
           bounds = Array.from(space.boundsGeometry).map((p) => [p.x, p.z]);
-          renderer.xr.setReferenceSpaceType('bounded-floor');
         }
-      } catch (e) { /* no Guardian bounds: the handle-distance check still applies */ }
+      } catch (e) { /* no bounded floor: usually a stationary boundary */ }
+      const area = bounds ? polygonArea(bounds) : 0;
+      const roomy = area >= config.min_room_area;
+      boundaryInfo = { kind: bounds ? (roomy ? 'roomscale' : 'small') : 'none', area: Math.round(area * 10) / 10,
+                       fallback: false };
+      if (roomy) {
+        renderer.xr.setReferenceSpaceType('bounded-floor');
+      } else {
+        bounds = null;
+        boundaryWarnUntil = performance.now() / 1000 + 15;
+        if (config.auto_stationary) {
+          vrMode = 'stationary';
+          boundaryInfo.fallback = true;
+        }
+      }
     }
     await renderer.xr.setSession(session);
     if (session.supportedFrameRates && session.updateTargetFrameRate) {   // flicker is tuned for 90 Hz
@@ -347,6 +376,11 @@ renderer.setAnimationLoop((time) => {
   hint.show(steering.notice ? '' : (steering.hint || ''), camera, -0.32, tagDirs, dt);
   notice.show(steering.notice || '', camera, -0.14, tagDirs, dt);
   safetyText.show(safety.reason, camera, 0.05, tagDirs, dt);
+  // a boundary too small for walking: tell the user how to fix it (for 15 s after Enter VR)
+  const warn = inVR && t < boundaryWarnUntil;
+  boundaryText1.show(warn ? (boundaryInfo.fallback ? 'Boundary too small to walk: standing mode (thumbsticks)'
+                                                   : 'Boundary too small to walk around in') : '', camera, 0.3, [], dt);
+  boundaryText2.show(warn ? 'To walk: Quest Settings > Boundary > Roomscale' : '', camera, 0.15, [], dt);
 
   // vignette while the walker moves (stationary mode only; in room scale the user moves for real)
   if (dt > 0 && lastPose) {
@@ -354,7 +388,7 @@ renderer.setAnimationLoop((time) => {
     moveRate += (rate - moveRate) * Math.min(dt * 4, 1);
   }
   lastPose = { ...pose };
-  const vignetteOn = inVR && config.vr_mode === 'stationary' && config.comfort_vignette;
+  const vignetteOn = inVR && vrMode === 'stationary' && config.comfort_vignette;
   vignette.material.opacity = vignetteOn ? Math.min(0.55, moveRate * 1.4) : 0;
   vignette.visible = vignette.material.opacity > 0.02;
 
@@ -379,8 +413,8 @@ renderer.setAnimationLoop((time) => {
     fps = frames / (t - fpsTime);
     frames = 0;
     fpsTime = t;
-    link.send({ type: 'headset_status', mode: inVR ? `vr_${config.vr_mode}` : 'desktop', fps: Math.round(fps),
-                guardian: !!bounds });
+    link.send({ type: 'headset_status', mode: inVR ? `vr_${vrMode}` : 'desktop', fps: Math.round(fps),
+                guardian: !!bounds, boundary: boundaryInfo });
     showStatus(`· ${Math.round(fps)} fps${steering.grip ? ` · grip ${steering.grip}` : ''}` +
                `${config.assist && steering.intervention > 0.05 ? ` · walker helping ${Math.round(100 * steering.intervention)}%` : ''}`);
   }

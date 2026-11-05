@@ -60,6 +60,10 @@ class Bridge(Node):
         self.latest = {}  # message type -> last message, sent to pages that connect later
         self.config = {
             'vr_mode': p('vr_mode', 'room_scale').value,                     # room_scale | stationary
+            # room scale needs a Roomscale boundary in the Quest (the app can't set it). Smaller than this, or a
+            # stationary circle: warn, and (auto_stationary) use stationary mode for the session instead
+            'min_room_area': p('min_room_area', 4.0).value,                  # m^2
+            'auto_stationary': p('auto_stationary', True).value,
             'comfort_vignette': p('comfort_vignette', True).value,
             'user_to_handle_offset': p('user_to_handle_offset', 0.4).value,  # m, hands in front of the head
             'boundary_stop_margin': p('boundary_stop_margin', 0.5).value,    # m from the Guardian edge -> STOP

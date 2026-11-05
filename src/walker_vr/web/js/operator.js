@@ -46,6 +46,11 @@ function render() {
   $('headset').innerHTML = rows([
     ['Flicker', flicker ? pill('allowed', 'ok') : pill('OFF', 'bad')],
     ['Mode', live ? `${headset.mode}${headset.guardian ? ' · Guardian known' : ''}` : '–'],
+    ['Boundary', !live || !headset.boundary || headset.boundary.kind === 'unknown' ? '–'
+      : headset.boundary.kind === 'roomscale' ? pill(`roomscale, ${headset.boundary.area} m²`, 'ok')
+      : pill(headset.boundary.kind === 'small' ? `too small for walking (${headset.boundary.area} m²)` : 'stationary / none', 'warn')
+        + (headset.boundary.fallback ? ' - using stationary mode (thumbsticks)' : '')
+        + ' · to walk: Quest Settings → Boundary → Roomscale (about 3 × 5 m)'],
     ['Headset', live ? pill(headset.mode.startsWith('vr') ? 'in VR' : 'desktop view', 'ok') : pill('not connected', 'warn')],
     ['Refresh rate', live ? `${pill(`${headset.fps} fps`, fpsKind)} ${fpsKind === 'warn' ? '(flicker is tuned for 90)' : ''}` : '–'],
   ]);

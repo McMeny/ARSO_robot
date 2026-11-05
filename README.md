@@ -246,7 +246,7 @@ This is the full setup, with the real headset and the real EEG.
 - A **cleared space of about 3 × 5 m** for room scale, with the Quest **Guardian** set up round it (or a spot to
   stand for stationary mode)
 
-### Part A: one-time setup (about 30 minutes)
+### Part A: one-time setup (about 35 minutes)
 
 **A1. Install the EEG library** (in WSL). Nothing else is needed: the web bridge is built in.
 ```bash
@@ -296,6 +296,20 @@ adapter, for example `192.168.1.42`. You'll type it into the Quest. Below it's w
 **A7. Let the Quest trust the certificate** (once per certificate). Start the system once (B4), then in the Quest
 browser open `https://<PC-IP>:8443` and choose **Advanced → Proceed** on the warning. Do the same once in the PC's
 browser for `https://localhost:8443`.
+
+**A8. SET UP THE QUEST BOUNDARY FOR WALKING (ROOMSCALE).** This has to be done in the Quest itself: Meta doesn't
+let any app or web page change the boundary.
+1. Clear a space of about **3 × 5 m** (no furniture, cables or rugs to trip on).
+2. On the Quest: **Settings → Boundary** (on some versions **Settings → Physical space → Boundary**).
+3. Choose **Roomscale** (sometimes "Create boundary"), **not Stationary**. Stationary is a small circle round you;
+   step out of it and the Quest fades the VR away, which is what happens if you try to walk with it.
+4. Trace the outline of the cleared space on the floor with a controller, and confirm.
+
+The app checks this every time you press Enter VR. If it finds a stationary circle (or a boundary smaller than
+4 m²), it says so in the headset and on the operator page, and **uses stationary mode for that session**: the user
+stands still and pushes with the thumbsticks. To walk, fix the boundary and press Enter VR again. (To only warn,
+without switching, launch with `auto_stationary:=false`.) No space to walk at all? Use `vr_mode:=stationary`
+and a Stationary boundary is fine.
 
 ### Part B: each session (about 15 minutes)
 
@@ -353,7 +367,8 @@ RViz and Gazebo don't draw). Open `https://localhost:8443/spectator.html` in a P
 each hazard's state, and the controls in [Operator controls](#operator-controls).
 
 **B7. Put the headset on the participant.**
-1. **Room scale:** stand the participant at one end of the cleared space, facing along its long side.
+1. **Room scale:** check the Quest boundary is **Roomscale** round the cleared space (A8), then stand the participant
+   at one end of it, facing along its long side.
 2. On the Quest, open the browser and go to `https://<PC-IP>:8443`.
 3. Wait for **"Connected"**, then tap **Enter VR**.
 4. Give them both controllers, **holding the grip triggers** (that's their hands on the handles). Ask them to hold
@@ -565,6 +580,7 @@ To watch the session in RViz, in Gazebo 3D, or through the participant's eyes, s
 | Caution speed | 50 % of top speed | `assist_guardian.yaml` (`caution_scale`) | With a missed / no-EEG hazard within 2 m |
 | Room scale push | 90 N per m your hand is ahead of the handle, at most 30 N | `walker_vr` web server parameters | How the virtual spring feels |
 | VR mode | room scale | launch option `vr_mode:=stationary` | Walk in a room, or stand and use the thumbsticks |
+| Small-boundary fallback | on, below 4 m² | launch option `auto_stationary:=false`; web server `min_room_area` | Room scale with a Stationary (or too small) Quest boundary: warn and use stationary mode |
 | Room safety | 0.5 m from the Guardian edge, 0.8 m from the handles | `walker_vr` web server parameters | Forces STOP |
 | Probe start distance | 4.0 m | `config/hazards.yaml` | How far ahead a hazard starts being probed |
 | Decision distance | 2.5 m | `config/hazards.yaml` | Escalate here if the hazard still isn't registered |
@@ -584,6 +600,8 @@ To watch the session in RViz, in Gazebo 3D, or through the participant's eyes, s
 | Quest says "Connecting…" forever | The system isn't running (B4), or the page was opened before it started: reload |
 | PC browser warns about the page | Expected with the self-signed certificate: choose Advanced → Proceed (A7) |
 | Walker doesn't move after Start walking | It only moves when pushed: the participant must hold **both** grip triggers *and* walk forward (room scale) or push the left thumbstick (stationary). Check the grip state on the operator page. Or the system is still starting (about 10 s after launch). |
+| **The view fades away when the participant walks** | The Quest boundary is set to **Stationary** (a small circle). Set up a **Roomscale** boundary (A8). Until then the app uses stationary mode (thumbsticks) and says so in the headset and on the operator page. |
+| Headset says "Boundary too small to walk" | Same: Quest Settings → Boundary → Roomscale, about 3 × 5 m (A8), then Enter VR again |
 | Walker stops with "Room edge reached" | Near the Guardian edge, or the participant is too far from the handles. Let go, hold A or X for 1 s to reset. |
 | "Blocked ahead. Turn to get round it" | Nothing the way they're pushing is clear (dead end, junction, wall). Turn: push one handle and pull the other (room scale: one hand forward, one back). |
 | The walker keeps stopping in a corridor | The participant is steering into a wall: the guardian bends them away up to 35°, then just stops them. Push straighter. |

@@ -12,6 +12,9 @@
     <!-- vr_mode:=room_scale (walk in a cleared room) or stationary (stand still, the view moves with the walker) -->
     <arg name = "vr_mode" default = "room_scale" />
     <arg name = "comfort_vignette" default = "true" />
+    <!-- room scale needs a Roomscale boundary set up in the Quest. If it finds a small / stationary one, it
+         warns and uses stationary mode for the session (auto_stationary:=false: just warn) -->
+    <arg name = "auto_stationary" default = "true" />
     <!-- grip:= quest (controller grip triggers) | keyboard (walker_keys) | arduino (FSRs) | operator (no handles: WALK on Start) -->
     <arg name = "grip" default = "$(eval '\'quest\' if \'$(var vr)\' == \'true\' else \'keyboard\'')" />
     <!-- eeg:= model | toggle (ssvep_emulator: verdicts only) | emulator (simulated raw EEG + the real decoder) | muse (real Muse over LSL) -->
@@ -145,6 +148,7 @@
             <param name = "world_file" value = "$(var world_path)" />
             <param name = "start_enabled" value = "false" />
             <param name = "vr_mode" value = "$(var vr_mode)" />
+            <param name = "auto_stationary" value = "$(var auto_stationary)" />
             <param name = "comfort_vignette" value = "$(var comfort_vignette)" />
             <param name = "use_sim_time" value = "true" />
         </node>
