@@ -5,7 +5,7 @@ measures what the walker does and prints PASS / FAIL.
   terminal 1:  ros2 launch my_robot_bringup walker_assist.launch.xml scenario:=obstacle
   terminal 2:  ros2 run my_robot_autonomy run_assist_scenario registered
 
-Scenarios: open, corridor, tjunction, registered, unregistered, cluttered, deadend, grip_release, head_turn.
+Scenarios: open, corridor, tjunction, registered, unregistered, cluttered, deadend, grip_release, head_turn, grip_check.
 (unregistered: launch with eeg_valid:=false.) 12 N on each handle is a 0.4 m/s walk.
 Every scenario also checks: no collisions, the collision monitor never needed, and the walker never
 faster than the push. Log: ~/eye2steering_ws/sessions/scenarios/assist_<name>.json
@@ -37,6 +37,10 @@ class AssistRunner(Runner):
         self.guardian_cmd = None
         self.force_pub = self.create_publisher(HandleForce, 'walker/handle_force', 10)
         self.create_subscription(Twist, 'cmd_vel_guardian', lambda m: setattr(self, 'guardian_cmd', m), 10)
+        self.command_pub = self.create_publisher(String, 'operator_command', 10)
+        self.calibration = None
+        self.create_subscription(String, 'walker/grip_calibration',
+                                 lambda m: setattr(self, 'calibration', json.loads(m.data)), 10)
         # the guardian's own output speed and the push speed, from the same tick (one message)
         self.pairs = []
         self.create_subscription(String, 'walker_status', self.on_status_json,
@@ -192,6 +196,31 @@ def scenario(r, name, rep):
                   f'moved {moved(e):.2f} m')
         r.act(2, push=(0.0, 0.0))
         return a + b + c + d + e
+    if name == 'grip_check':
+        def record(gentle, firm):
+            r.act(2, grip=(gentle, gentle))
+            r.command_pub.publish(String(data='calibrate_relaxed'))
+            r.act(2, grip=(firm, firm))
+            r.calibration = None
+            r.command_pub.publish(String(data='calibrate_firm'))
+            r.act(1, grip=(firm, firm))
+            return r.calibration or {}
+        c = record(0.3, 0.7)
+        rep.check('hand check sets the thresholds between the two holds',
+                  c.get('ok') is True and abs(c.get('light', 0) - 0.15) < 0.01 and abs(c.get('firm', 0) - 0.5) < 0.01,
+                  f'{c.get("message")}')
+        a = r.act(2, grip=(0.58, 0.58))
+        rep.check("a squeeze past this person's threshold (default 0.6) counts as firm", a[-1]['grip'] == 2, f'grip state {a[-1]["grip"]}')
+        b = r.act(2, grip=(0.25, 0.25))
+        rep.check('a gentle hold still counts as held', b[-1]['grip'] == 1, f'grip state {b[-1]["grip"]}')
+        c2 = record(0.5, 0.55)
+        rep.check('a squeeze too close to the hold is refused', c2.get('ok') is False, f'{c2.get("message")}')
+        d = r.act(2, grip=(0.58, 0.58))
+        rep.check('refused: the last good thresholds stay', d[-1]['grip'] == 2, f'grip state {d[-1]["grip"]}')
+        e = r.act(3, grip=(0.58, 0.58))
+        rep.check('no push during any of it: the walker never moved', moved(a + b + d + e) < 0.01, f'moved {moved(a + b + d + e) * 100:.1f} cm')
+        r.act(1, hands=False)
+        return a + b + d + e
     raise ValueError(f'unknown scenario {name}')
 
 

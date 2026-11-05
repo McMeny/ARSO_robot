@@ -18,11 +18,12 @@
 //   desktop     W / S push / pull, A / D turn, + Space = squeeze firmly (the grip counts as held while a key is down)
 // Hold A or X for 1 s to recentre / reset. Head pose goes to ROS 20 times a second.
 // Squeezing the grips firmly while pushing turns the walker towards where the head points.
-// In VR a guide panel always says what to do next (guidance.js): wait, a seven-step walkthrough, start again.
+// In VR a guide panel always says what to do next (guidance.js): a hand check that sets this person's grip
+// thresholds (pushes are ignored until it's done), a seven-step walkthrough, then how to start again.
 import * as THREE from '../vendor/three.module.js';
 import { connect, rosToThree, threeToRos, rosHeading, makeScene, addWorld, makeWalker, placeWalker,
          HazardTags, Trajectory, TestPatch, TextPanel } from './common.js';
-import { guidance, Lesson } from './guidance.js';
+import { guidance, GripCheck, Lesson } from './guidance.js';
 
 const DESKTOP_EYE_HEIGHT = 1.6;   // desktop mode only - in VR the real eye height is used
 const HANDLE_X = -0.1;            // m, handles behind base_footprint (see makeWalker)
@@ -86,6 +87,7 @@ let safety = { stop: false, reason: '' };
 let walkerEnabled = false;      // the operator's Start walking
 let grip = { left: 0, right: 0 };
 let lesson = new Lesson(), lastActive = 0, stuckSince = null;   // for the guide panel
+let check = new GripCheck(), gripLight = 0.2;                   // the hand check, and this person's light threshold
 
 const link = connect({
   config: (m) => { config = { ...config, ...m }; showStatus(); },
@@ -96,7 +98,15 @@ const link = connect({
   test_stimulus: (m) => patch.set(m),
   flicker_enabled: (m) => { tags.flickerEnabled = m.value; flickerOn = m.value; },
   walker_enabled: (m) => { walkerEnabled = m.value; },
-  command: (m) => { if (m.name === 'recentre') recentre(); },
+  command: (m) => {
+    if (m.name === 'recentre') recentre();
+    if (m.name === 'grip_check') check = new GripCheck();
+    if (m.name === 'grip_skip') check.skip();
+  },
+  grip_calibration: (m) => {
+    if (m.ok && m.kind === 'firm') gripLight = m.light;
+    check.reply(m, lastTime || 0);
+  },
 }, (ok) => { connected = ok; showStatus(); });
 
 addWorld(scene).then((n) => { worldCount = n; showStatus(); });
@@ -224,8 +234,11 @@ window.addEventListener('keyup', (e) => keys.delete(e.code));
 
 const clampPush = (f) => Math.max(-config.max_push_n, Math.min(config.max_push_n, f));
 
+function checking() { return inVR && check.active; }
+
 function readPush(grip) {
   if (!config.assist) return null;
+  if (checking()) return { left: 0, right: 0 };     // the walker stays put during the hand check
   if (inVR) {
     const session = renderer.xr.getSession();
     if (vrMode === 'room_scale') {
@@ -235,7 +248,7 @@ function readPush(grip) {
       const f = { left: 0, right: 0 };
       for (const g of grips) {
         const hand = g.userData.hand;
-        if (!(hand in f) || grip[hand] < 0.2) continue;
+        if (!(hand in f) || grip[hand] < gripLight) continue;
         const d = g.getWorldPosition(new THREE.Vector3()).sub(simHandle(hand === 'left' ? 1 : -1));
         f[hand] = clampPush(config.spring_n_per_m * d.dot(fwd));
       }
@@ -290,18 +303,22 @@ function nextStep(t) {
   const speed = steering.user_speed || 0;
   const active = moving || Math.abs(speed) > 0.02;
   if (active) lastActive = t;
-  const hands = grip.left >= 0.2 && grip.right >= 0.2;
+  const hands = grip.left >= gripLight && grip.right >= gripLight;
   const stuck = steering.grip === 'STOP' && hands;
   if (!stuck) stuckSince = null;
   else if (stuckSince === null) stuckSince = t;
-  if (walkerEnabled) {
+  if (connected && anchor && !safety.stop) {
+    const name = check.update({ left: grip.left, right: grip.right, t });
+    if (name) link.send({ type: 'command', name });
+  }
+  if (walkerEnabled && !check.active) {
     lesson.update({ held: hands && steering.grip !== 'STOP', moving, speed, yaw: pose.yaw,
                     headSteering: !!steering.head_steering, t });
   }
   return guidance({
     connected, recentred: !!anchor, gripState: steering.grip, enabled: walkerEnabled, left: grip.left, right: grip.right,
     mode: vrMode, safetyReason: safety.reason, busy: !!(steering.notice || steering.hint), active,
-    step: lesson.step, lesson: lesson.text(vrMode),
+    check: check.text(), light: gripLight, step: lesson.step, lesson: lesson.text(vrMode),
     stillFor: t - lastActive, stuckFor: stuckSince === null ? 0 : t - stuckSince,
   });
 }
@@ -372,6 +389,7 @@ async function setupVR() {
     inVR = true;
     anchor = null;
     lesson = new Lesson();
+    check = new GripCheck();
     camera.position.set(0, 0, 0);
     button.style.display = 'none';
     setTimeout(recentre, 1000);     // once the headset pose has settled
@@ -447,7 +465,7 @@ renderer.setAnimationLoop((time) => {
     frames = 0;
     fpsTime = t;
     link.send({ type: 'headset_status', mode: inVR ? `vr_${vrMode}` : 'desktop', fps: Math.round(fps),
-                guardian: !!bounds, boundary: boundaryInfo });
+                guardian: !!bounds, boundary: boundaryInfo, guide: guide.text });
     showStatus(`· ${Math.round(fps)} fps${steering.grip ? ` · grip ${steering.grip}` : ''}` +
                `${config.assist && steering.intervention > 0.05 ? ` · walker helping ${Math.round(100 * steering.intervention)}%` : ''}`);
   }

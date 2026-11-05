@@ -382,7 +382,10 @@ fails, check the Oz electrode (B1) before continuing.
 
 **B9. Press Start walking** on the operator page.
 
-The headset then guides the participant by itself. A panel says when to wait, then walks them through seven steps:
+The headset then guides the participant by itself. First comes a **hand check**, about 15 seconds: a gentle hold, a
+firm squeeze, then a test. It sets that person's own grip thresholds, the panel instructs them throughout, and the
+walker can't move until it's done. **Redo hand check** and **Skip hand check** are on the operator page. Then the panel
+says when to wait, and walks them through seven steps:
 hold the grips, go forward, stop, turn, head turn, back up, full stop. Each step moves on only when they've really done it. After
 that it says how to start moving again whenever they stop (for example **"Press and hold both grip buttons to start
 moving again"**). No Muse is needed for this: leave out `eeg:=muse` to walk with the simulated EEG.
@@ -564,6 +567,8 @@ On `https://localhost:8443/operator.html`:
 | **Stop flicker** | Turns off every flickering tag immediately (safety) |
 | **SSVEP check** | The pre-session EEG test (B8) |
 | **Recentre** | Puts the walker's handles at the participant's hands (same as holding A or X for 1 s) |
+| **Redo hand check / Skip hand check** | Restarts the grip calibration, or skips it and keeps the current thresholds |
+| **Participant sees** | The instruction on the participant's panel right now |
 | **Walker status** | State (normal, careful, turning, blocked, stopped), grip state, and any message shown to the participant |
 | **EEG status** | Live signal quality: OK, poor contact, or no stream |
 | **Hazard list** | Each hazard: frequency, state (waiting, probing, registered, missed) and confidence |

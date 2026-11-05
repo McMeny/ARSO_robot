@@ -95,6 +95,8 @@ class Bridge(Node):
         self.create_subscription(String, 'walker_status', lambda m: self.send('walker_status', json.loads(m.data)), latched)
         self.create_subscription(String, 'eeg_status', lambda m: self.send('eeg_status', json.loads(m.data)), 10)
         self.create_subscription(String, 'test_stimulus', lambda m: self.send('test_stimulus', json.loads(m.data)), 10)
+        self.create_subscription(String, 'walker/grip_calibration',
+                                 lambda m: self.send('grip_calibration', json.loads(m.data), remember=False), 10)
         self.create_subscription(Bool, 'walker_enabled', lambda m: self.send('walker_enabled', {'value': m.data}), latched)
         self.create_subscription(Bool, 'flicker_enabled', lambda m: self.send('flicker_enabled', {'value': m.data}), latched)
 

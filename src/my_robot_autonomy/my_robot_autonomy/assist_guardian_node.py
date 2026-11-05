@@ -269,7 +269,7 @@ class AssistGuardianNode(Node):
         st = SteeringStatus()
         st.header.stamp = self.get_clock().now().to_msg()
         st.header.frame_id = 'odom'
-        st.grip_state = GripState.STOP if locked else GripState.WALK
+        st.grip_state = GripState.STOP if locked else self.grip
         st.authority = float(1.0 - d.intervention)
         st.desired_yaw = float(odom_pose[2] + d.k_user * 1.0)
         st.turning_in_place = mode == 'turning'

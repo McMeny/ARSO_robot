@@ -17,14 +17,17 @@ the handles) and the operator's Stop walking force STOP. Raw readings older than
 `raw_timeout` count as released, so a lost headset or cable stops the walker.
 
 Calibration: services ~/calibrate_relaxed and ~/calibrate_firm (std_srvs/Trigger) each record
-the last second of readings; once both are done the thresholds are set between them.
+the last second of readings; once both are done the thresholds are set between them. The headset's
+hand check does the same with the commands calibrate_relaxed and calibrate_firm on /operator_command,
+and gets each result back on /walker/grip_calibration (JSON).
 """
+import json
 import math
 
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, DurabilityPolicy
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 from std_srvs.srv import Trigger
 
 from my_robot_autonomy.grip_logic import GripLogic, NAMES, STOP, WALK
@@ -68,6 +71,8 @@ class GripStateNode(Node):
             raise ValueError(f'unknown grip source "{self.source}" (quest, keyboard, arduino, operator)')
         self.create_subscription(Bool, 'walker/force_stop', self.on_force_stop, 10)
         self.create_subscription(Bool, 'walker_enabled', self.on_enabled, latched)
+        self.create_subscription(String, 'operator_command', self.on_command, 10)
+        self.calibration_pub = self.create_publisher(String, 'walker/grip_calibration', 10)
         self.create_service(Trigger, '~/calibrate_relaxed', lambda req, res: self.calibrate('relaxed', res))
         self.create_service(Trigger, '~/calibrate_firm', lambda req, res: self.calibrate('firm', res))
         self.create_timer(0.02, self.update)
@@ -90,6 +95,17 @@ class GripStateNode(Node):
 
     def on_enabled(self, msg):
         self.operator_enabled = msg.data
+
+    def on_command(self, msg):
+        if msg.data not in ('calibrate_relaxed', 'calibrate_firm'):
+            return
+        kind = msg.data.split('_')[1]
+        if kind == 'relaxed':
+            self.calibration.clear()      # a new hand check: nothing from the last one carries over
+        result = self.calibrate(kind, Trigger.Response())
+        self.calibration_pub.publish(String(data=json.dumps({
+            'kind': kind, 'ok': result.success, 'message': result.message,
+            'light': self.logic.light, 'firm': self.logic.firm})))
 
     def open_serial(self, port, baud):
         try:

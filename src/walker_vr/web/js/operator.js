@@ -26,6 +26,8 @@ $('flicker-off').onclick = () => link.send({ type: 'flicker_enabled', value: fal
 $('flicker-on').onclick = () => link.send({ type: 'flicker_enabled', value: true });
 $('recentre').onclick = () => link.send({ type: 'command', name: 'recentre' });
 $('check').onclick = () => link.send({ type: 'command', name: 'ssvep_check' });
+$('grip-check').onclick = () => link.send({ type: 'command', name: 'grip_check' });
+$('grip-skip').onclick = () => link.send({ type: 'command', name: 'grip_skip' });
 
 function render() {
   const state = walker.state || '–';
@@ -44,6 +46,7 @@ function render() {
   const live = headset && Date.now() - headsetTime < 5000;
   const fpsKind = live && headset.mode.startsWith('vr') && Math.abs(headset.fps - 90) > 5 ? 'warn' : 'ok';
   $('headset').innerHTML = rows([
+    ['Participant sees', live && headset.guide ? headset.guide.replace('\n', ' · ') : 'no instruction showing'],
     ['Flicker', flicker ? pill('allowed', 'ok') : pill('OFF', 'bad')],
     ['Mode', live ? `${headset.mode}${headset.guardian ? ' · Guardian known' : ''}` : '–'],
     ['Boundary', !live || !headset.boundary || headset.boundary.kind === 'unknown' ? '–'
